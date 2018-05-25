@@ -1,1 +1,1 @@
-web: freechessclub-chlog
+worker: freechessclub-chlog
