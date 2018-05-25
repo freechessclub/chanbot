@@ -1,0 +1,19 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "Liv7AJyNinmP3pvwohcXp4R6xY4=",
+			"path": "github.com/Sirupsen/logrus",
+			"revision": "202f25545ea4cf9b191ff7f846df5d87c9382c2b",
+			"revisionTime": "2017-06-08T21:02:02Z"
+		},
+		{
+			"checksumSHA1": "HSzEA32rVv/GeWvRLRQXXGXTPTA=",
+			"path": "github.com/ziutek/telnet",
+			"revision": "49d9be70897fe0a7400a152121453075b2835866",
+			"revisionTime": "2015-04-27T11:54:47Z"
+		}
+	],
+	"rootPath": "github.com/freechessclub/freechessclub-chlog"
+}
