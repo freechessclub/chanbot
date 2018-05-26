@@ -61,18 +61,6 @@
 			"revisionTime": "2018-05-23T08:18:13Z"
 		},
 		{
-			"checksumSHA1": "dj95hOb+DlOfAdfLC8ElEQFwfYo=",
-			"path": "gopkg.in/olivere/elastic.v6/config",
-			"revision": "f6c25d4a1713cf170f84eff4d70485dd8108d2e7",
-			"revisionTime": "2018-05-23T08:18:13Z"
-		},
-		{
-			"checksumSHA1": "wTxsgElkLY3xedRHh4uRg6798bc=",
-			"path": "gopkg.in/olivere/elastic.v6/uritemplates",
-			"revision": "f6c25d4a1713cf170f84eff4d70485dd8108d2e7",
-			"revisionTime": "2018-05-23T08:18:13Z"
-		},
-		{
 			"path": "gopkg.in/olivere/elastic/config",
 			"revision": ""
 		}
