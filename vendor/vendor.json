@@ -9,28 +9,10 @@
 			"revisionTime": "2017-06-08T21:02:02Z"
 		},
 		{
-			"checksumSHA1": "HIMDeysKGqDKh9a3N5lFLZRNHaU=",
-			"path": "github.com/mailru/easyjson",
-			"revision": "8b799c424f57fa123fc63a99d6383bc6e4c02578",
-			"revisionTime": "2018-03-23T15:44:45Z"
-		},
-		{
-			"checksumSHA1": "T8soMJArSZrYnhmdpAnq1bVxQ6Q=",
-			"path": "github.com/mailru/easyjson/buffer",
-			"revision": "8b799c424f57fa123fc63a99d6383bc6e4c02578",
-			"revisionTime": "2018-03-23T15:44:45Z"
-		},
-		{
-			"checksumSHA1": "r2z0mW+SLfGn93Psm3tvEs3WQDM=",
-			"path": "github.com/mailru/easyjson/jlexer",
-			"revision": "8b799c424f57fa123fc63a99d6383bc6e4c02578",
-			"revisionTime": "2018-03-23T15:44:45Z"
-		},
-		{
-			"checksumSHA1": "4BAeeJ7JywEQyR6GqRrxfSfN2/Q=",
-			"path": "github.com/mailru/easyjson/jwriter",
-			"revision": "8b799c424f57fa123fc63a99d6383bc6e4c02578",
-			"revisionTime": "2018-03-23T15:44:45Z"
+			"checksumSHA1": "JU+kcMNB8CPi7DJmxK5E3vpNxcg=",
+			"path": "github.com/olivere/elastic",
+			"revision": "eb69fbabfd6151d6c0f6d3d850d4f61edcff3763",
+			"revisionTime": "2016-10-08T09:19:33Z"
 		},
 		{
 			"path": "github.com/olivere/elastic/config",
@@ -43,26 +25,16 @@
 			"revisionTime": "2016-10-08T09:19:33Z"
 		},
 		{
-			"checksumSHA1": "ljd3FhYRJ91cLZz3wsH9BQQ2JbA=",
-			"path": "github.com/pkg/errors",
-			"revision": "816c9085562cd7ee03e7f8188a1cfd942858cded",
-			"revisionTime": "2018-03-11T21:45:15Z"
-		},
-		{
 			"checksumSHA1": "HSzEA32rVv/GeWvRLRQXXGXTPTA=",
 			"path": "github.com/ziutek/telnet",
 			"revision": "49d9be70897fe0a7400a152121453075b2835866",
 			"revisionTime": "2015-04-27T11:54:47Z"
 		},
 		{
-			"checksumSHA1": "UXIKWnOcXH3z6HHeA/B3+Z2qR1w=",
-			"path": "gopkg.in/olivere/elastic.v6",
-			"revision": "f6c25d4a1713cf170f84eff4d70485dd8108d2e7",
-			"revisionTime": "2018-05-23T08:18:13Z"
-		},
-		{
-			"path": "gopkg.in/olivere/elastic/config",
-			"revision": ""
+			"checksumSHA1": "O5dZe+m70S7vbkgePsMLrUc86DA=",
+			"path": "gopkg.in/olivere/elastic.v2/uritemplates",
+			"revision": "2cd27b9ae892f6b4dd8dd6d73489797c99e9c6fa",
+			"revisionTime": "2018-05-17T14:35:08Z"
 		}
 	],
 	"rootPath": "github.com/freechessclub/freechessclub-chlog"

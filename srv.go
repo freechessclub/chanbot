@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/ziutek/telnet"
-	"gopkg.in/olivere/elastic.v6"
+	"github.com/olivere/elastic"
 )
 
 const (
