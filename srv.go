@@ -16,7 +16,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"os"
 	"regexp"
@@ -46,11 +45,9 @@ type Msg struct {
 
 var (
 	chTellRE *regexp.Regexp
-	ctx      context.Context
 )
 
 func init() {
-	ctx = context.Background()
 	chTellRE = regexp.MustCompile(`(?s)^([a-zA-Z]+)(?:\([A-Z\*]+\))*\(([0-9]+)\):\s+(.*)`)
 }
 
@@ -175,7 +172,7 @@ func (s *Session) ficsReader(client *elastic.Client) {
 			Index("logs").
 			Type("data").
 			BodyJson(msg).
-			Do(ctx)
+			Do()
 		if err != nil {
 			// Handle error
 			panic(err)
@@ -245,14 +242,14 @@ func newSession(user, pass, ip string) (*Session, error) {
 		panic(err)
 	}
 
-	exists, err := client.IndexExists("logs").Do(ctx)
+	exists, err := client.IndexExists("logs").Do()
 	if err != nil {
 		// Handle error
 		panic(err)
 	}
 	if !exists {
 		// Create a new index.
-		createIndex, err := client.CreateIndex("logs").Do(ctx)
+		createIndex, err := client.CreateIndex("logs").Do()
 		if err != nil {
 			// Handle error
 			panic(err)
