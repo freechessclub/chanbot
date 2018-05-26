@@ -9,10 +9,64 @@
 			"revisionTime": "2017-06-08T21:02:02Z"
 		},
 		{
+			"checksumSHA1": "HIMDeysKGqDKh9a3N5lFLZRNHaU=",
+			"path": "github.com/mailru/easyjson",
+			"revision": "8b799c424f57fa123fc63a99d6383bc6e4c02578",
+			"revisionTime": "2018-03-23T15:44:45Z"
+		},
+		{
+			"checksumSHA1": "T8soMJArSZrYnhmdpAnq1bVxQ6Q=",
+			"path": "github.com/mailru/easyjson/buffer",
+			"revision": "8b799c424f57fa123fc63a99d6383bc6e4c02578",
+			"revisionTime": "2018-03-23T15:44:45Z"
+		},
+		{
+			"checksumSHA1": "r2z0mW+SLfGn93Psm3tvEs3WQDM=",
+			"path": "github.com/mailru/easyjson/jlexer",
+			"revision": "8b799c424f57fa123fc63a99d6383bc6e4c02578",
+			"revisionTime": "2018-03-23T15:44:45Z"
+		},
+		{
+			"checksumSHA1": "4BAeeJ7JywEQyR6GqRrxfSfN2/Q=",
+			"path": "github.com/mailru/easyjson/jwriter",
+			"revision": "8b799c424f57fa123fc63a99d6383bc6e4c02578",
+			"revisionTime": "2018-03-23T15:44:45Z"
+		},
+		{
+			"checksumSHA1": "ljd3FhYRJ91cLZz3wsH9BQQ2JbA=",
+			"path": "github.com/pkg/errors",
+			"revision": "816c9085562cd7ee03e7f8188a1cfd942858cded",
+			"revisionTime": "2018-03-11T21:45:15Z"
+		},
+		{
 			"checksumSHA1": "HSzEA32rVv/GeWvRLRQXXGXTPTA=",
 			"path": "github.com/ziutek/telnet",
 			"revision": "49d9be70897fe0a7400a152121453075b2835866",
 			"revisionTime": "2015-04-27T11:54:47Z"
+		},
+		{
+			"checksumSHA1": "PWnaaXGKKJou+pBAy6IegbLHXq0=",
+			"path": "gopkg.in/olivere/elastic.v5",
+			"revision": "b708306d715bea9b983685e94ab4602cdc9f988b",
+			"revisionTime": "2018-05-17T13:57:48Z"
+		},
+		{
+			"checksumSHA1": "Z/5tTcmNfSOHMkcLDkxN93PQ410=",
+			"path": "gopkg.in/olivere/elastic.v5/config",
+			"revision": "b708306d715bea9b983685e94ab4602cdc9f988b",
+			"revisionTime": "2018-05-17T13:57:48Z"
+		},
+		{
+			"checksumSHA1": "pCApZfp2CeDnWbNVsyzNO62ZUXA=",
+			"path": "gopkg.in/olivere/elastic.v5/uritemplates",
+			"revision": "b708306d715bea9b983685e94ab4602cdc9f988b",
+			"revisionTime": "2018-05-17T13:57:48Z"
+		},
+		{
+			"checksumSHA1": "UXIKWnOcXH3z6HHeA/B3+Z2qR1w=",
+			"path": "gopkg.in/olivere/elastic.v6",
+			"revision": "f6c25d4a1713cf170f84eff4d70485dd8108d2e7",
+			"revisionTime": "2018-05-23T08:18:13Z"
 		}
 	],
 	"rootPath": "github.com/freechessclub/freechessclub-chlog"

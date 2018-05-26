@@ -16,11 +16,14 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"time"
 
 	"github.com/ziutek/telnet"
+	"gopkg.in/olivere/elastic.v6"
 )
 
 const (
@@ -36,17 +39,19 @@ type Session struct {
 }
 
 type Msg struct {
-	Channel string
-	Handle  string
-	Text    string
+	Channel string `json:"channel"`
+	Handle  string `json:"handle"`
+	Text    string `json:"text"`
 }
 
 var (
 	chTellRE *regexp.Regexp
+	ctx      context.Context
 )
 
 func init() {
-	chTellRE       = regexp.MustCompile(`(?s)^([a-zA-Z]+)(?:\([A-Z\*]+\))*\(([0-9]+)\):\s+(.*)`)
+	ctx = context.Background()
+	chTellRE = regexp.MustCompile(`(?s)^([a-zA-Z]+)(?:\([A-Z\*]+\))*\(([0-9]+)\):\s+(.*)`)
 }
 
 func Connect(network, addr, ip string, timeout, retries int) (*telnet.Conn, error) {
@@ -89,10 +94,10 @@ func sanitize(b []byte) []byte {
 
 func send(conn *telnet.Conn, cmd string) error {
 	conn.SetWriteDeadline(time.Now().Add(20 * time.Second))
-        buf := make([]byte, len(cmd)+1)
-        copy(buf, cmd)
-        buf[len(cmd)] = '\n'
-        _, err := conn.Conn.Write(buf)
+	buf := make([]byte, len(cmd)+1)
+	copy(buf, cmd)
+	buf[len(cmd)] = '\n'
+	_, err := conn.Conn.Write(buf)
 	return err
 }
 
@@ -146,7 +151,7 @@ func Login(conn *telnet.Conn, username, password string) (string, error) {
 	}
 }
 
-func (s *Session) ficsReader() {
+func (s *Session) ficsReader(client *elastic.Client) {
 	for {
 		s.conn.SetReadDeadline(time.Now().Add(3600 * time.Second))
 		out, err := readUntil(s.conn, ficsPrompt)
@@ -166,7 +171,15 @@ func (s *Session) ficsReader() {
 			continue
 		}
 
-		// todo: process message here
+		_, err = client.Index().
+			Index("logs").
+			Type("data").
+			BodyJson(msg).
+			Do(ctx)
+		if err != nil {
+			// Handle error
+			panic(err)
+		}
 	}
 }
 
@@ -226,7 +239,30 @@ func newSession(user, pass, ip string) (*Session, error) {
 		username: username,
 	}
 
-	go s.ficsReader()
+	client, err := elastic.NewClient(elastic.SetURL(os.Getenv("SEARCHBOX_SSL_URL")))
+	if err != nil {
+		// Handle error
+		panic(err)
+	}
+
+	exists, err := client.IndexExists("logs").Do(ctx)
+	if err != nil {
+		// Handle error
+		panic(err)
+	}
+	if !exists {
+		// Create a new index.
+		createIndex, err := client.CreateIndex("logs").Do(ctx)
+		if err != nil {
+			// Handle error
+			panic(err)
+		}
+		if !createIndex.Acknowledged {
+			// Not acknowledged
+		}
+	}
+
+	go s.ficsReader(client)
 	return s, nil
 }
 

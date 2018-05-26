@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	log      = logrus.New()
+	log = logrus.New()
 )
 
 func main() {
