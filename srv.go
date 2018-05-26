@@ -231,6 +231,11 @@ func newSession(user, pass, ip string) (*Session, error) {
 		return nil, err
 	}
 
+	_, err = sendAndReadUntil(conn, "+ch 39", newLine)
+	if err != nil {
+		return nil, err
+	}
+
 	s := &Session{
 		conn:     conn,
 		username: username,
