@@ -159,7 +159,7 @@ func (s *Session) ficsReader(client *elastic.Client) {
 			continue
 		}
 
-		var m Msg = msg.(Msg)
+		var m *Msg = msg.(*Msg)
 		_, err = client.Index().
 			Index("logs").
 			Type("data").
