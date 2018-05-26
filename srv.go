@@ -236,7 +236,6 @@ func newSession(user, pass, ip string) (*Session, error) {
 		username: username,
 	}
 
-	fmt.Println(os.Getenv("SEARCHBOX_SSL_URL"))
 	client, err := elastic.NewClient(
 		elastic.SetHealthcheck(false),
 		elastic.SetSniff(false),
