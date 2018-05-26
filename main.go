@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -35,6 +36,7 @@ func main() {
 		return
 	}
 	for {
+		runtime.Gosched()
 	}
 	s.end()
 }
