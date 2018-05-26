@@ -21,8 +21,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/ziutek/telnet"
 	"github.com/olivere/elastic"
+	"github.com/ziutek/telnet"
 )
 
 const (
@@ -237,7 +237,10 @@ func newSession(user, pass, ip string) (*Session, error) {
 	}
 
 	fmt.Println(os.Getenv("SEARCHBOX_SSL_URL"))
-	client, err := elastic.NewClient(elastic.SetURL(os.Getenv("SEARCHBOX_SSL_URL")))
+	client, err := elastic.NewClient(
+		elastic.SetHealthcheck(false),
+		elastic.SetSniff(false),
+		elastic.SetURL(os.Getenv("SEARCHBOX_SSL_URL")))
 	if err != nil {
 		// Handle error
 		panic(err)
