@@ -159,15 +159,17 @@ func (s *Session) ficsReader(client *elastic.Client) {
 			continue
 		}
 
+		var m Msg = msg.(Msg)
 		_, err = client.Index().
 			Index("logs").
 			Type("data").
 			BodyJson(msg).
 			Do()
 		if err != nil {
-			// Handle error
-			panic(err)
+			// ignore msg
+			log.Printf("FAILED::%s:%s:%s", m.Channel, m.Handle, m.Text)
 		}
+		log.Printf("LOGGED::%s:%s:%s", m.Channel, m.Handle, m.Text)
 	}
 }
 
