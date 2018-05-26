@@ -236,6 +236,7 @@ func newSession(user, pass, ip string) (*Session, error) {
 		username: username,
 	}
 
+	fmt.Println(os.Getenv("SEARCHBOX_SSL_URL"))
 	client, err := elastic.NewClient(elastic.SetURL(os.Getenv("SEARCHBOX_SSL_URL")))
 	if err != nil {
 		// Handle error
