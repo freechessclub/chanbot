@@ -28,7 +28,7 @@ func main() {
 	defer resp.Body.Close()
 
 	ip, err := ioutil.ReadAll(resp.Body)
-	user := "guest"
+	user := "ChanLogger"
 	pass := ""
 	s, err := newSession(user, pass, string(ip))
 	if err != nil {
