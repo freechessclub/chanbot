@@ -36,7 +36,8 @@ func main() {
 		return
 	}
 	for {
-		runtime.Gosched()
+		time.Sleep(58 * time.Minute)
+		s.send("uptime")
 	}
 	s.end()
 }
