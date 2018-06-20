@@ -9,7 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"runtime"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 )
