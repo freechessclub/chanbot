@@ -169,6 +169,7 @@ func (s *Session) ficsReader(client *elastic.Client) {
 				str = "Hello " + m.Handle + ", I am ChanLogger. Looking for something?"
 			} else {
 				str = searchDocs(client, m.Text)
+				log.Printf("RESULT::%s", str)
 			}
 			s.send("t " + m.Handle + " " + str)
 		} else {
