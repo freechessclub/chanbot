@@ -37,7 +37,7 @@ func main() {
 	}
 	for {
 		time.Sleep(58 * time.Minute)
-		s.send("uptime")
+		s.send("ping")
 	}
 	s.end()
 }
