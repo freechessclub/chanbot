@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"time"
 
@@ -36,10 +37,12 @@ type Msg struct {
 
 var (
 	chTellRE *regexp.Regexp
+	pTellRE  *regexp.Regexp
 )
 
 func init() {
 	chTellRE = regexp.MustCompile(`(?s)^([a-zA-Z]+)(?:\([A-Z\*]+\))*\(([0-9]+)\):\s+(.*)`)
+	pTellRE = regexp.MustCompile(`(?s)^([a-zA-Z]+)(?:[\(\[][A-Z0-9\*\-]+[\)\]])* (?:tells you|says|kibitzes):\s+(.*)`)
 }
 
 func Connect(network, addr, ip string, timeout, retries int) (*telnet.Conn, error) {
@@ -159,18 +162,52 @@ func (s *Session) ficsReader(client *elastic.Client) {
 			continue
 		}
 
-		var m *Msg = msg.(*Msg)
-		_, err = client.Index().
-			Index("logs").
-			Type("data").
-			BodyJson(msg).
-			Do()
-		if err != nil {
-			// ignore msg
-			log.Printf("FAILED::%s:%s:%s", m.Channel, m.Handle, m.Text)
+		var m = msg.(*Msg)
+		if m.Channel == "" {
+			var str string
+			if m.Text == "" {
+				str = "Hello " + m.Handle + ", I am ChanLogger. Looking for something?"
+			} else {
+				str = searchDocs(client, m.Text)
+			}
+			s.send("t " + m.Handle + " " + str)
+		} else {
+			_, err = client.Index().
+				Index("logs").
+				Type("data").
+				BodyJson(msg).
+				Do()
+			if err != nil {
+				// ignore msg
+				log.Printf("FAILED::%s:%s:%s", m.Channel, m.Handle, m.Text)
+			}
+			log.Printf("LOGGED::%s:%s:%s", m.Channel, m.Handle, m.Text)
 		}
-		log.Printf("LOGGED::%s:%s:%s", m.Channel, m.Handle, m.Text)
 	}
+}
+
+func searchDocs(client *elastic.Client, term string) string {
+	query := elastic.NewBoolQuery()
+	query = query.Must(elastic.NewTermQuery("handle", term))
+	query = query.Must(elastic.NewTermQuery("text", term))
+	searchResult, err := client.Search().
+		Index("logs").
+		Type("data").
+		Query(query).
+		From(0).Size(10).
+		Pretty(true).
+		Do()
+	if err != nil {
+		log.Println("Error searching for term")
+	}
+
+	str := ""
+	var msg Msg
+	for _, item := range searchResult.Each(reflect.TypeOf(msg)) {
+		m := item.(Msg)
+		str += fmt.Sprintf("%s: %s\n", m.Handle, m.Text)
+	}
+	return str
 }
 
 func decodeMessage(msg []byte) (interface{}, error) {
@@ -186,6 +223,16 @@ func decodeMessage(msg []byte) (interface{}, error) {
 			Text:    string(bytes.Replace(matches[3][:], []byte("\n"), []byte{}, -1)),
 		}, nil
 	}
+
+	matches = pTellRE.FindSubmatch(msg)
+	if matches != nil && len(matches) > 2 {
+		return &Msg{
+			Channel: "",
+			Handle:  string(matches[1][:]),
+			Text:    string(bytes.Replace(matches[2][:], []byte("\n"), []byte{}, -1)),
+		}, nil
+	}
+
 	return nil, nil
 }
 
