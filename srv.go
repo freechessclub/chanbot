@@ -164,6 +164,9 @@ func (s *Session) ficsReader(client *elastic.Client) {
 
 		var m = msg.(*Msg)
 		if m.Channel == "" {
+			if m.Handle == "ROBOadmin" || m.Handle == "adminBOT" {
+				continue
+			}
 			var str string
 			if m.Text == "" {
 				str = "Hello " + m.Handle + ", I am ChanLogger. Looking for something?"
