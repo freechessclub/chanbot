@@ -169,6 +169,9 @@ func (s *Session) ficsReader(client *elastic.Client) {
 				str = "Hello " + m.Handle + ", I am ChanLogger. Looking for something?"
 			} else {
 				str = searchDocs(client, m.Text)
+				if str == "" {
+					str = "No results found for search term " + m.Text
+				}
 				log.Printf("RESULT::%s", str)
 			}
 			s.send("t " + m.Handle + " " + str)
@@ -189,8 +192,8 @@ func (s *Session) ficsReader(client *elastic.Client) {
 
 func searchDocs(client *elastic.Client, term string) string {
 	query := elastic.NewBoolQuery()
-	query = query.Must(elastic.NewTermQuery("handle", term))
-	query = query.Must(elastic.NewTermQuery("text", term))
+	query = query.Should(elastic.NewTermQuery("handle", term))
+	query = query.Should(elastic.NewTermQuery("text", term))
 	searchResult, err := client.Search().
 		Index("logs").
 		Type("data").
