@@ -212,7 +212,7 @@ func searchDocs(client *elastic.Client, term string) string {
 	var msg Msg
 	for _, item := range searchResult.Each(reflect.TypeOf(msg)) {
 		m := item.(Msg)
-		str += fmt.Sprintf("%s: %s\\n", m.Handle, m.Text)
+		str += fmt.Sprintf(" [%s: %s] ", m.Handle, m.Text)
 	}
 	return str
 }
