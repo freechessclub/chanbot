@@ -11,6 +11,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/olivere/elastic"
@@ -167,15 +168,16 @@ func (s *Session) ficsReader(client *elastic.Client) {
 			if m.Handle == "ROBOadmin" || m.Handle == "adminBOT" {
 				continue
 			}
+			fields := strings.Fields(m.Text)
 			var str string
-			if m.Text == "" {
-				str = "Hello " + m.Handle + ", I am ChanLogger. Looking for something?"
-			} else {
-				str = searchDocs(client, m.Text)
+			if len(fields) > 1 && fields[0] == "search" {
+				str = searchDocs(client, fields[1])
 				if str == "" {
-					str = "No results found for search term " + m.Text
+					str = "No results found for search term " + fields[1]
 				}
-				log.Printf("RESULT::%s", str)
+				log.Printf("RESULTS::%s", str)
+			} else {
+				str = "Hello " + m.Handle + ", I am ChanLogger. Looking for something? Type \"tell ChanLogger search [term]\""
 			}
 			s.send("t " + m.Handle + " " + str)
 		} else {
@@ -186,9 +188,10 @@ func (s *Session) ficsReader(client *elastic.Client) {
 				Do()
 			if err != nil {
 				// ignore msg
-				log.Printf("FAILED::%s:%s:%s", m.Channel, m.Handle, m.Text)
+				log.Printf("FAILED::%s:%s:%s:%v", m.Channel, m.Handle, m.Text, err)
+			} else {
+				log.Printf("LOGGED::%s:%s:%s", m.Channel, m.Handle, m.Text)
 			}
-			log.Printf("LOGGED::%s:%s:%s", m.Channel, m.Handle, m.Text)
 		}
 	}
 }
@@ -201,7 +204,7 @@ func searchDocs(client *elastic.Client, term string) string {
 		Index("logs").
 		Type("data").
 		Query(query).
-		From(0).Size(10).
+		From(0).Size(2).
 		Pretty(true).
 		Do()
 	if err != nil {
