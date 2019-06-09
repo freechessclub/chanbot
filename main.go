@@ -105,7 +105,6 @@ func main() {
 					if err != nil {
 						log.Printf("failed to search %v: %v", query, err)
 					}
-					log.Printf("RESULTS::%s", results)
 					if len(results) == 0 {
 						response = "No results found for " + fields[1]
 					} else {
