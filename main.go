@@ -62,7 +62,6 @@ func main() {
 
 	for {
 		msgs, err := client.Recv()
-		log.Println(msgs, err)
 		if err == io.EOF {
 			break
 		}
@@ -95,7 +94,6 @@ func main() {
 				}
 
 				fields := strings.Fields(m.Message)
-				log.Printf("received cmd '%s' from '%s'", m.Message, m.Handle)
 				var response string
 				if len(fields) > 1 && fields[0] == "search" {
 					query := map[string]interface{}{
@@ -119,6 +117,8 @@ func main() {
 					response = "Hello " + m.Handle + ", I am ChanLogger. Looking for something? Type \"tell ChanLogger search [term]\""
 				}
 				client.Send("t " + m.Handle + " " + response)
+			default:
+				log.Printf("ignoring message: %v", msg)
 			}
 		}
 	}
