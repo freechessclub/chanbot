@@ -39,7 +39,6 @@ func main() {
 
 	// initialization commands here
 	client.Send("set seek 0")
-	client.Send("set echo 1")
 	client.Send("set interface www.freechess.club")
 	for _, ch := range channels {
 		client.Send(fmt.Sprintf("+ch %d", ch))
@@ -63,6 +62,7 @@ func main() {
 
 	for {
 		msgs, err := client.Recv()
+		log.Println(msgs, err)
 		if err == io.EOF {
 			break
 		}
