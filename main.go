@@ -118,7 +118,6 @@ func main() {
 					response = "Hello " + m.Handle + ", I am ChanLogger. Looking for something? Type \"tell ChanLogger search [term]\""
 				}
 				client.Send("t " + m.Handle + " " + response)
-
 			}
 		}
 	}

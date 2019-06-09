@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/olivere/elastic"
@@ -31,11 +32,15 @@ func NewElasticDB(index, typ string) (DB, error) {
 		return nil, fmt.Errorf("failed to create a new elasticsearch client: %v", err)
 	}
 
+	log.Println("created new Elastic DB...")
+
 	// check if specified index exists or not
 	exists, err := client.IndexExists(index).Do(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if index %s exists: %v", index, err)
 	}
+
+	log.Printf("checking if index %s exists...(%v)", exists)
 
 	if !exists {
 		// create a new index
