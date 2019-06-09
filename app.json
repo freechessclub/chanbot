@@ -1,9 +1,9 @@
 {
-  "name": "Free Chess Club Channel Logger",
-  "description": "FICS channel logger hosted by Free Chess Club.",
-  "keywords": ["chess", "fics", "freechessclub", "chlog"],
+  "name": "Free Chess Club Channel Bot",
+  "description": "FICS channel bot hosted by Free Chess Club.",
+  "keywords": ["chess", "fics", "freechessclub", "chanbot"],
   "image": "heroku/go:latest",
-  "mount_dir": "src/github.com/freechessclub/freechessclub-chlog",
+  "mount_dir": "src/github.com/freechessclub/chanbot",
   "website": "http://www.freechess.club",
-  "repository": "https://github.com/freechessclub/freechessclub-chlog"
+  "repository": "https://github.com/freechessclub/chanbot"
 }
