@@ -1,1 +1,1 @@
-worker: freechessclub-chlog
+worker: chanbot
