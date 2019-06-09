@@ -40,7 +40,7 @@ func NewElasticDB(index, typ string) (DB, error) {
 		return nil, fmt.Errorf("failed to check if index %s exists: %v", index, err)
 	}
 
-	log.Printf("checking if index %s exists...(%v)", exists)
+	log.Printf("checking if index %s exists...(%t)", index, exists)
 
 	if !exists {
 		// create a new index
@@ -51,6 +51,7 @@ func NewElasticDB(index, typ string) (DB, error) {
 		if !createIndex.Acknowledged {
 			// not acknowledged
 		}
+		log.Printf("created new index %s...", index)
 	}
 
 	return &ElasticDB{

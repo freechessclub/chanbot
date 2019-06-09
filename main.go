@@ -95,6 +95,7 @@ func main() {
 				}
 
 				fields := strings.Fields(m.Message)
+				log.Printf("received cmd '%s' from '%s'", m.Message, m.Handle)
 				var response string
 				if len(fields) > 1 && fields[0] == "search" {
 					query := map[string]interface{}{
