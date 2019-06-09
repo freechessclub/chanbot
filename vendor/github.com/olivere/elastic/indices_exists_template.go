@@ -1,18 +1,20 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/olivere/elastic/uritemplates"
 )
 
 // IndicesExistsTemplateService checks if a given template exists.
-// See http://www.elastic.co/guide/en/elasticsearch/reference/current/indices-templates.html#indices-templates-exists
+// See http://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-templates.html#indices-templates-exists
 // for documentation.
 type IndicesExistsTemplateService struct {
 	client *Client
@@ -60,7 +62,7 @@ func (s *IndicesExistsTemplateService) buildURL() (string, url.Values, error) {
 	// Add query string parameters
 	params := url.Values{}
 	if s.pretty {
-		params.Set("pretty", "1")
+		params.Set("pretty", "true")
 	}
 	if s.local != nil {
 		params.Set("local", fmt.Sprintf("%v", *s.local))
@@ -81,7 +83,7 @@ func (s *IndicesExistsTemplateService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *IndicesExistsTemplateService) Do() (bool, error) {
+func (s *IndicesExistsTemplateService) Do(ctx context.Context) (bool, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return false, err
@@ -94,14 +96,23 @@ func (s *IndicesExistsTemplateService) Do() (bool, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("HEAD", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
+		Method:       "HEAD",
+		Path:         path,
+		Params:       params,
+		IgnoreErrors: []int{404},
+	})
 	if err != nil {
 		return false, err
 	}
-	if res.StatusCode == 200 {
+
+	// Return operation response
+	switch res.StatusCode {
+	case http.StatusOK:
 		return true, nil
-	} else if res.StatusCode == 404 {
+	case http.StatusNotFound:
 		return false, nil
+	default:
+		return false, fmt.Errorf("elastic: got HTTP code %d when it should have been either 200 or 404", res.StatusCode)
 	}
-	return false, fmt.Errorf("elastic: got HTTP code %d when it should have been either 200 or 404", res.StatusCode)
 }

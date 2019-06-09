@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -12,22 +12,23 @@ import (
 // It resembles the SearchSourceBuilder in Elasticsearch.
 type SearchSource struct {
 	query                    Query
-	postFilter               Filter
+	postQuery                Query
+	sliceQuery               Query
 	from                     int
 	size                     int
 	explain                  *bool
 	version                  *bool
-	sorts                    []SortInfo
 	sorters                  []Sorter
-	trackScores              bool
+	trackScores              *bool
+	trackTotalHits           *bool
+	searchAfterSortValues    []interface{}
 	minScore                 *float64
 	timeout                  string
-	fieldNames               []string
-	fieldDataFields          []string
+	terminateAfter           *int
+	storedFieldNames         []string
+	docvalueFields           DocvalueFields
 	scriptFields             []*ScriptField
-	partialFields            []*PartialField
 	fetchSourceContext       *FetchSourceContext
-	facets                   map[string]Facet
 	aggregations             map[string]Aggregation
 	highlight                *Highlight
 	globalSuggestText        string
@@ -37,25 +38,19 @@ type SearchSource struct {
 	indexBoosts              map[string]float64
 	stats                    []string
 	innerHits                map[string]*InnerHit
+	collapse                 *CollapseBuilder
+	profile                  bool
+	// TODO extBuilders []SearchExtBuilder
 }
 
 // NewSearchSource initializes a new SearchSource.
 func NewSearchSource() *SearchSource {
 	return &SearchSource{
-		from:            -1,
-		size:            -1,
-		trackScores:     false,
-		sorts:           make([]SortInfo, 0),
-		sorters:         make([]Sorter, 0),
-		fieldDataFields: make([]string, 0),
-		scriptFields:    make([]*ScriptField, 0),
-		partialFields:   make([]*PartialField, 0),
-		facets:          make(map[string]Facet),
-		aggregations:    make(map[string]Aggregation),
-		rescores:        make([]*Rescore, 0),
-		indexBoosts:     make(map[string]float64),
-		stats:           make([]string, 0),
-		innerHits:       make(map[string]*InnerHit),
+		from:         -1,
+		size:         -1,
+		aggregations: make(map[string]Aggregation),
+		indexBoosts:  make(map[string]float64),
+		innerHits:    make(map[string]*InnerHit),
 	}
 }
 
@@ -65,11 +60,28 @@ func (s *SearchSource) Query(query Query) *SearchSource {
 	return s
 }
 
+// Profile specifies that this search source should activate the
+// Profile API for queries made on it.
+func (s *SearchSource) Profile(profile bool) *SearchSource {
+	s.profile = profile
+	return s
+}
+
 // PostFilter will be executed after the query has been executed and
 // only affects the search hits, not the aggregations.
 // This filter is always executed as the last filtering mechanism.
-func (s *SearchSource) PostFilter(postFilter Filter) *SearchSource {
-	s.postFilter = postFilter
+func (s *SearchSource) PostFilter(postFilter Query) *SearchSource {
+	s.postQuery = postFilter
+	return s
+}
+
+// Slice allows partitioning the documents in multiple slices.
+// It is e.g. used to slice a scroll operation, supported in
+// Elasticsearch 5.0 or later.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/search-request-scroll.html#sliced-scroll
+// for details.
+func (s *SearchSource) Slice(sliceQuery Query) *SearchSource {
+	s.sliceQuery = sliceQuery
 	return s
 }
 
@@ -118,15 +130,22 @@ func (s *SearchSource) TimeoutInMillis(timeoutInMillis int) *SearchSource {
 	return s
 }
 
+// TerminateAfter specifies the maximum number of documents to collect for
+// each shard, upon reaching which the query execution will terminate early.
+func (s *SearchSource) TerminateAfter(terminateAfter int) *SearchSource {
+	s.terminateAfter = &terminateAfter
+	return s
+}
+
 // Sort adds a sort order.
 func (s *SearchSource) Sort(field string, ascending bool) *SearchSource {
-	s.sorts = append(s.sorts, SortInfo{Field: field, Ascending: ascending})
+	s.sorters = append(s.sorters, SortInfo{Field: field, Ascending: ascending})
 	return s
 }
 
 // SortWithInfo adds a sort order.
 func (s *SearchSource) SortWithInfo(info SortInfo) *SearchSource {
-	s.sorts = append(s.sorts, info)
+	s.sorters = append(s.sorters, info)
 	return s
 }
 
@@ -137,19 +156,32 @@ func (s *SearchSource) SortBy(sorter ...Sorter) *SearchSource {
 }
 
 func (s *SearchSource) hasSort() bool {
-	return len(s.sorts) > 0 || len(s.sorters) > 0
+	return len(s.sorters) > 0
 }
 
 // TrackScores is applied when sorting and controls if scores will be
 // tracked as well. Defaults to false.
 func (s *SearchSource) TrackScores(trackScores bool) *SearchSource {
-	s.trackScores = trackScores
+	s.trackScores = &trackScores
 	return s
 }
 
-// Facet adds a facet to perform as part of the search.
-func (s *SearchSource) Facet(name string, facet Facet) *SearchSource {
-	s.facets[name] = facet
+// TrackTotalHits indicates if the total hit count for the query should be tracked.
+// Defaults to true.
+//
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/index-modules-index-sorting.html#early-terminate
+// for details.
+func (s *SearchSource) TrackTotalHits(trackTotalHits bool) *SearchSource {
+	s.trackTotalHits = &trackTotalHits
+	return s
+}
+
+// SearchAfter allows a different form of pagination by using a live cursor,
+// using the results of the previous page to help the retrieval of the next.
+//
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/search-request-search-after.html
+func (s *SearchSource) SearchAfter(sortValues ...interface{}) *SearchSource {
+	s.searchAfterSortValues = append(s.searchAfterSortValues, sortValues...)
 	return s
 }
 
@@ -193,14 +225,14 @@ func (s *SearchSource) Suggester(suggester Suggester) *SearchSource {
 	return s
 }
 
-// AddRescorer adds a rescorer to the search.
-func (s *SearchSource) AddRescore(rescore *Rescore) *SearchSource {
+// Rescorer adds a rescorer to the search.
+func (s *SearchSource) Rescorer(rescore *Rescore) *SearchSource {
 	s.rescores = append(s.rescores, rescore)
 	return s
 }
 
 // ClearRescorers removes all rescorers from the search.
-func (s *SearchSource) ClearRescores() *SearchSource {
+func (s *SearchSource) ClearRescorers() *SearchSource {
 	s.rescores = make([]*Rescore, 0)
 	return s
 }
@@ -222,51 +254,66 @@ func (s *SearchSource) FetchSourceContext(fetchSourceContext *FetchSourceContext
 	return s
 }
 
-// Fields	sets the fields to load and return as part of the search request.
-// If none are specified, the source of the document will be returned.
-func (s *SearchSource) Fields(fieldNames ...string) *SearchSource {
-	if s.fieldNames == nil {
-		s.fieldNames = make([]string, 0)
-	}
-	s.fieldNames = append(s.fieldNames, fieldNames...)
+// FetchSourceIncludeExclude specifies that _source should be returned
+// with each hit, where "include" and "exclude" serve as a simple wildcard
+// matcher that gets applied to its fields
+// (e.g. include := []string{"obj1.*","obj2.*"}, exclude := []string{"description.*"}).
+func (s *SearchSource) FetchSourceIncludeExclude(include, exclude []string) *SearchSource {
+	s.fetchSourceContext = NewFetchSourceContext(true).
+		Include(include...).
+		Exclude(exclude...)
 	return s
 }
 
-// Field adds a single field to load and return (note, must be stored) as
+// NoStoredFields indicates that no fields should be loaded, resulting in only
+// id and type to be returned per field.
+func (s *SearchSource) NoStoredFields() *SearchSource {
+	s.storedFieldNames = nil
+	return s
+}
+
+// StoredField adds a single field to load and return (note, must be stored) as
 // part of the search request. If none are specified, the source of the
 // document will be returned.
-func (s *SearchSource) Field(fieldName string) *SearchSource {
-	if s.fieldNames == nil {
-		s.fieldNames = make([]string, 0)
+func (s *SearchSource) StoredField(storedFieldName string) *SearchSource {
+	s.storedFieldNames = append(s.storedFieldNames, storedFieldName)
+	return s
+}
+
+// StoredFields	sets the fields to load and return as part of the search request.
+// If none are specified, the source of the document will be returned.
+func (s *SearchSource) StoredFields(storedFieldNames ...string) *SearchSource {
+	s.storedFieldNames = append(s.storedFieldNames, storedFieldNames...)
+	return s
+}
+
+// DocvalueField adds a single field to load from the field data cache
+// and return as part of the search request.
+func (s *SearchSource) DocvalueField(fieldDataField string) *SearchSource {
+	s.docvalueFields = append(s.docvalueFields, DocvalueField{Field: fieldDataField})
+	return s
+}
+
+// DocvalueField adds a single docvalue field to load from the field data cache
+// and return as part of the search request.
+func (s *SearchSource) DocvalueFieldWithFormat(fieldDataFieldWithFormat DocvalueField) *SearchSource {
+	s.docvalueFields = append(s.docvalueFields, fieldDataFieldWithFormat)
+	return s
+}
+
+// DocvalueFields adds one or more fields to load from the field data cache
+// and return as part of the search request.
+func (s *SearchSource) DocvalueFields(docvalueFields ...string) *SearchSource {
+	for _, f := range docvalueFields {
+		s.docvalueFields = append(s.docvalueFields, DocvalueField{Field: f})
 	}
-	s.fieldNames = append(s.fieldNames, fieldName)
 	return s
 }
 
-// NoFields indicates that no fields should be loaded, resulting in only
-// id and type to be returned per field.
-func (s *SearchSource) NoFields() *SearchSource {
-	s.fieldNames = make([]string, 0)
-	return s
-}
-
-// FieldDataFields adds one or more fields to load from the field data cache
+// DocvalueFields adds one or more docvalue fields to load from the field data cache
 // and return as part of the search request.
-func (s *SearchSource) FieldDataFields(fieldDataFields ...string) *SearchSource {
-	s.fieldDataFields = append(s.fieldDataFields, fieldDataFields...)
-	return s
-}
-
-// FieldDataField adds a single field to load from the field data cache
-// and return as part of the search request.
-func (s *SearchSource) FieldDataField(fieldDataField string) *SearchSource {
-	s.fieldDataFields = append(s.fieldDataFields, fieldDataField)
-	return s
-}
-
-// ScriptFields adds one or more script fields with the provided scripts.
-func (s *SearchSource) ScriptFields(scriptFields ...*ScriptField) *SearchSource {
-	s.scriptFields = append(s.scriptFields, scriptFields...)
+func (s *SearchSource) DocvalueFieldsWithFormat(docvalueFields ...DocvalueField) *SearchSource {
+	s.docvalueFields = append(s.docvalueFields, docvalueFields...)
 	return s
 }
 
@@ -276,15 +323,9 @@ func (s *SearchSource) ScriptField(scriptField *ScriptField) *SearchSource {
 	return s
 }
 
-// PartialFields adds partial fields.
-func (s *SearchSource) PartialFields(partialFields ...*PartialField) *SearchSource {
-	s.partialFields = append(s.partialFields, partialFields...)
-	return s
-}
-
-// PartialField adds a partial field.
-func (s *SearchSource) PartialField(partialField *PartialField) *SearchSource {
-	s.partialFields = append(s.partialFields, partialField)
+// ScriptFields adds one or more script fields with the provided scripts.
+func (s *SearchSource) ScriptFields(scriptFields ...*ScriptField) *SearchSource {
+	s.scriptFields = append(s.scriptFields, scriptFields...)
 	return s
 }
 
@@ -307,8 +348,14 @@ func (s *SearchSource) InnerHit(name string, innerHit *InnerHit) *SearchSource {
 	return s
 }
 
+// Collapse adds field collapsing.
+func (s *SearchSource) Collapse(collapse *CollapseBuilder) *SearchSource {
+	s.collapse = collapse
+	return s
+}
+
 // Source returns the serializable JSON for the source builder.
-func (s *SearchSource) Source() interface{} {
+func (s *SearchSource) Source() (interface{}, error) {
 	source := make(map[string]interface{})
 
 	if s.from != -1 {
@@ -320,11 +367,22 @@ func (s *SearchSource) Source() interface{} {
 	if s.timeout != "" {
 		source["timeout"] = s.timeout
 	}
-	if s.query != nil {
-		source["query"] = s.query.Source()
+	if s.terminateAfter != nil {
+		source["terminate_after"] = *s.terminateAfter
 	}
-	if s.postFilter != nil {
-		source["post_filter"] = s.postFilter.Source()
+	if s.query != nil {
+		src, err := s.query.Source()
+		if err != nil {
+			return nil, err
+		}
+		source["query"] = src
+	}
+	if s.postQuery != nil {
+		src, err := s.postQuery.Source()
+		if err != nil {
+			return nil, err
+		}
+		source["post_filter"] = src
 	}
 	if s.minScore != nil {
 		source["min_score"] = *s.minScore
@@ -335,116 +393,143 @@ func (s *SearchSource) Source() interface{} {
 	if s.explain != nil {
 		source["explain"] = *s.explain
 	}
+	if s.profile {
+		source["profile"] = s.profile
+	}
 	if s.fetchSourceContext != nil {
-		source["_source"] = s.fetchSourceContext.Source()
+		src, err := s.fetchSourceContext.Source()
+		if err != nil {
+			return nil, err
+		}
+		source["_source"] = src
 	}
-
-	if s.fieldNames != nil {
-		switch len(s.fieldNames) {
+	if s.storedFieldNames != nil {
+		switch len(s.storedFieldNames) {
 		case 1:
-			source["fields"] = s.fieldNames[0]
+			source["stored_fields"] = s.storedFieldNames[0]
 		default:
-			source["fields"] = s.fieldNames
+			source["stored_fields"] = s.storedFieldNames
 		}
 	}
-
-	if len(s.fieldDataFields) > 0 {
-		source["fielddata_fields"] = s.fieldDataFields
-	}
-
-	if len(s.partialFields) > 0 {
-		pfmap := make(map[string]interface{})
-		for _, partialField := range s.partialFields {
-			pfmap[partialField.Name] = partialField.Source()
+	if len(s.docvalueFields) > 0 {
+		src, err := s.docvalueFields.Source()
+		if err != nil {
+			return nil, err
 		}
-		source["partial_fields"] = pfmap
+		source["docvalue_fields"] = src
 	}
-
 	if len(s.scriptFields) > 0 {
 		sfmap := make(map[string]interface{})
 		for _, scriptField := range s.scriptFields {
-			sfmap[scriptField.FieldName] = scriptField.Source()
+			src, err := scriptField.Source()
+			if err != nil {
+				return nil, err
+			}
+			sfmap[scriptField.FieldName] = src
 		}
 		source["script_fields"] = sfmap
 	}
-
 	if len(s.sorters) > 0 {
-		sortarr := make([]interface{}, 0)
+		var sortarr []interface{}
 		for _, sorter := range s.sorters {
-			sortarr = append(sortarr, sorter.Source())
-		}
-		source["sort"] = sortarr
-	} else if len(s.sorts) > 0 {
-		sortarr := make([]interface{}, 0)
-		for _, sort := range s.sorts {
-			sortarr = append(sortarr, sort.Source())
+			src, err := sorter.Source()
+			if err != nil {
+				return nil, err
+			}
+			sortarr = append(sortarr, src)
 		}
 		source["sort"] = sortarr
 	}
-
-	if s.trackScores {
-		source["track_scores"] = s.trackScores
+	if v := s.trackScores; v != nil {
+		source["track_scores"] = *v
 	}
-
+	if v := s.trackTotalHits; v != nil {
+		source["track_total_hits"] = *v
+	}
+	if len(s.searchAfterSortValues) > 0 {
+		source["search_after"] = s.searchAfterSortValues
+	}
+	if s.sliceQuery != nil {
+		src, err := s.sliceQuery.Source()
+		if err != nil {
+			return nil, err
+		}
+		source["slice"] = src
+	}
 	if len(s.indexBoosts) > 0 {
 		source["indices_boost"] = s.indexBoosts
 	}
-
-	if len(s.facets) > 0 {
-		facetsMap := make(map[string]interface{})
-		for field, facet := range s.facets {
-			facetsMap[field] = facet.Source()
-		}
-		source["facets"] = facetsMap
-	}
-
 	if len(s.aggregations) > 0 {
 		aggsMap := make(map[string]interface{})
 		for name, aggregate := range s.aggregations {
-			aggsMap[name] = aggregate.Source()
+			src, err := aggregate.Source()
+			if err != nil {
+				return nil, err
+			}
+			aggsMap[name] = src
 		}
 		source["aggregations"] = aggsMap
 	}
-
 	if s.highlight != nil {
-		source["highlight"] = s.highlight.Source()
+		src, err := s.highlight.Source()
+		if err != nil {
+			return nil, err
+		}
+		source["highlight"] = src
 	}
-
 	if len(s.suggesters) > 0 {
 		suggesters := make(map[string]interface{})
 		for _, s := range s.suggesters {
-			suggesters[s.Name()] = s.Source(false)
+			src, err := s.Source(false)
+			if err != nil {
+				return nil, err
+			}
+			suggesters[s.Name()] = src
 		}
 		if s.globalSuggestText != "" {
 			suggesters["text"] = s.globalSuggestText
 		}
 		source["suggest"] = suggesters
 	}
-
 	if len(s.rescores) > 0 {
 		// Strip empty rescores from request
-		rescores := make([]*Rescore, 0)
+		var rescores []*Rescore
 		for _, r := range s.rescores {
 			if !r.IsEmpty() {
 				rescores = append(rescores, r)
 			}
 		}
-
 		if len(rescores) == 1 {
 			rescores[0].defaultRescoreWindowSize = s.defaultRescoreWindowSize
-			source["rescore"] = rescores[0].Source()
+			src, err := rescores[0].Source()
+			if err != nil {
+				return nil, err
+			}
+			source["rescore"] = src
 		} else {
-			slice := make([]interface{}, 0)
+			var slice []interface{}
 			for _, r := range rescores {
 				r.defaultRescoreWindowSize = s.defaultRescoreWindowSize
-				slice = append(slice, r.Source())
+				src, err := r.Source()
+				if err != nil {
+					return nil, err
+				}
+				slice = append(slice, src)
 			}
 			source["rescore"] = slice
 		}
 	}
-
 	if len(s.stats) > 0 {
 		source["stats"] = s.stats
+	}
+	// TODO ext builders
+
+	if s.collapse != nil {
+		src, err := s.collapse.Source()
+		if err != nil {
+			return nil, err
+		}
+		source["collapse"] = src
 	}
 
 	if len(s.innerHits) > 0 {
@@ -464,87 +549,32 @@ func (s *SearchSource) Source() interface{} {
 		m := make(map[string]interface{})
 		for name, hit := range s.innerHits {
 			if hit.path != "" {
+				src, err := hit.Source()
+				if err != nil {
+					return nil, err
+				}
 				path := make(map[string]interface{})
-				path[hit.path] = hit.Source()
+				path[hit.path] = src
 				m[name] = map[string]interface{}{
 					"path": path,
 				}
 			} else if hit.typ != "" {
+				src, err := hit.Source()
+				if err != nil {
+					return nil, err
+				}
 				typ := make(map[string]interface{})
-				typ[hit.typ] = hit.Source()
+				typ[hit.typ] = src
 				m[name] = map[string]interface{}{
 					"type": typ,
 				}
 			} else {
 				// TODO the Java client throws here, because either path or typ must be specified
+				_ = m
 			}
 		}
 		source["inner_hits"] = m
 	}
 
-	return source
-}
-
-// -- Script Field --
-
-type ScriptField struct {
-	FieldName string
-
-	script string
-	lang   string
-	params map[string]interface{}
-}
-
-func NewScriptField(fieldName, script, lang string, params map[string]interface{}) *ScriptField {
-	return &ScriptField{fieldName, script, lang, params}
-}
-
-func (f *ScriptField) Source() interface{} {
-	source := make(map[string]interface{})
-	source["script"] = f.script
-	if f.lang != "" {
-		source["lang"] = f.lang
-	}
-	if f.params != nil && len(f.params) > 0 {
-		source["params"] = f.params
-	}
-	return source
-}
-
-// -- Partial Field --
-
-type PartialField struct {
-	Name     string
-	includes []string
-	excludes []string
-}
-
-func NewPartialField(name string, includes, excludes []string) *PartialField {
-	return &PartialField{name, includes, excludes}
-}
-
-func (f *PartialField) Source() interface{} {
-	source := make(map[string]interface{})
-
-	if f.includes != nil {
-		switch len(f.includes) {
-		case 0:
-		case 1:
-			source["include"] = f.includes[0]
-		default:
-			source["include"] = f.includes
-		}
-	}
-
-	if f.excludes != nil {
-		switch len(f.excludes) {
-		case 0:
-		case 1:
-			source["exclude"] = f.excludes[0]
-		default:
-			source["exclude"] = f.excludes
-		}
-	}
-
-	return source
+	return source, nil
 }

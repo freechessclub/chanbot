@@ -1,11 +1,11 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -14,7 +14,7 @@ import (
 )
 
 // IndicesStatsService provides stats on various metrics of one or more
-// indices. See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/indices-stats.html.
+// indices. See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/indices-stats.html.
 type IndicesStatsService struct {
 	client           *Client
 	pretty           bool
@@ -53,20 +53,20 @@ func (s *IndicesStatsService) Metric(metric ...string) *IndicesStatsService {
 
 // Index is the list of index names; use `_all` or empty string to perform
 // the operation on all indices.
-func (s *IndicesStatsService) Index(index ...string) *IndicesStatsService {
-	s.index = append(s.index, index...)
+func (s *IndicesStatsService) Index(indices ...string) *IndicesStatsService {
+	s.index = append(s.index, indices...)
+	return s
+}
+
+// Type is a list of document types for the `indexing` index metric.
+func (s *IndicesStatsService) Type(types ...string) *IndicesStatsService {
+	s.types = append(s.types, types...)
 	return s
 }
 
 // Level returns stats aggregated at cluster, index or shard level.
 func (s *IndicesStatsService) Level(level string) *IndicesStatsService {
 	s.level = level
-	return s
-}
-
-// Types is a list of document types for the `indexing` index metric.
-func (s *IndicesStatsService) Types(types ...string) *IndicesStatsService {
-	s.types = append(s.types, types...)
 	return s
 }
 
@@ -135,7 +135,7 @@ func (s *IndicesStatsService) buildURL() (string, url.Values, error) {
 	// Add query string parameters
 	params := url.Values{}
 	if s.pretty {
-		params.Set("pretty", "1")
+		params.Set("pretty", "true")
 	}
 	if len(s.groups) > 0 {
 		params.Set("groups", strings.Join(s.groups, ","))
@@ -167,7 +167,7 @@ func (s *IndicesStatsService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *IndicesStatsService) Do() (*IndicesStatsResponse, error) {
+func (s *IndicesStatsService) Do(ctx context.Context) (*IndicesStatsResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -180,14 +180,18 @@ func (s *IndicesStatsService) Do() (*IndicesStatsResponse, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("GET", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
+		Method: "GET",
+		Path:   path,
+		Params: params,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	// Return operation response
 	ret := new(IndicesStatsResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -196,7 +200,7 @@ func (s *IndicesStatsService) Do() (*IndicesStatsResponse, error) {
 // IndicesStatsResponse is the response of IndicesStatsService.Do.
 type IndicesStatsResponse struct {
 	// Shards provides information returned from shards.
-	Shards shardsInfo `json:"_shards"`
+	Shards *ShardsInfo `json:"_shards"`
 
 	// All provides summary stats about all indices.
 	All *IndexStats `json:"_all,omitempty"`
@@ -208,8 +212,9 @@ type IndicesStatsResponse struct {
 
 // IndexStats is index stats for a specific index.
 type IndexStats struct {
-	Primaries *IndexStatsDetails `json:"primaries,omitempty"`
-	Total     *IndexStatsDetails `json:"total,omitempty"`
+	Primaries *IndexStatsDetails              `json:"primaries,omitempty"`
+	Total     *IndexStatsDetails              `json:"total,omitempty"`
+	Shards    map[string][]*IndexStatsDetails `json:"shards,omitempty"`
 }
 
 type IndexStatsDetails struct {
@@ -239,25 +244,20 @@ type IndexStatsDocs struct {
 }
 
 type IndexStatsStore struct {
-	Size                 string `json:"size,omitempty"` // human size, e.g. 119.3mb
-	SizeInBytes          int64  `json:"size_in_bytes,omitempty"`
-	ThrottleTime         string `json:"throttle_time,omitempty"` // human time, e.g. 0s
-	ThrottleTimeInMillis int64  `json:"throttle_time_in_millis,omitempty"`
+	Size        string `json:"size,omitempty"` // human size, e.g. 119.3mb
+	SizeInBytes int64  `json:"size_in_bytes,omitempty"`
 }
 
 type IndexStatsIndexing struct {
-	IndexTotal           int64  `json:"index_total,omitempty"`
-	IndexTime            string `json:"index_time,omitempty"`
-	IndexTimeInMillis    int64  `json:"index_time_in_millis,omitempty"`
-	IndexCurrent         int64  `json:"index_current,omitempty"`
-	DeleteTotal          int64  `json:"delete_total,omitempty"`
-	DeleteTime           string `json:"delete_time,omitempty"`
-	DeleteTimeInMillis   int64  `json:"delete_time_in_millis,omitempty"`
-	DeleteCurrent        int64  `json:"delete_current,omitempty"`
-	NoopUpdateTotal      int64  `json:"noop_update_total,omitempty"`
-	IsThrottled          bool   `json:"is_throttled,omitempty"`
-	ThrottleTime         string `json:"throttle_time,omitempty"`
-	ThrottleTimeInMillis int64  `json:"throttle_time_in_millis,omitempty"`
+	IndexTotal         int64  `json:"index_total,omitempty"`
+	IndexTime          string `json:"index_time,omitempty"`
+	IndexTimeInMillis  int64  `json:"index_time_in_millis,omitempty"`
+	IndexCurrent       int64  `json:"index_current,omitempty"`
+	DeleteTotal        int64  `json:"delete_total,omitempty"`
+	DeleteTime         string `json:"delete_time,omitempty"`
+	DeleteTimeInMillis int64  `json:"delete_time_in_millis,omitempty"`
+	DeleteCurrent      int64  `json:"delete_current,omitempty"`
+	NoopUpdateTotal    int64  `json:"noop_update_total,omitempty"`
 }
 
 type IndexStatsGet struct {
@@ -274,15 +274,23 @@ type IndexStatsGet struct {
 }
 
 type IndexStatsSearch struct {
-	OpenContexts      int64  `json:"open_contexts,omitempty"`
-	QueryTotal        int64  `json:"query_total,omitempty"`
-	QueryTime         string `json:"query_time,omitempty"`
-	QueryTimeInMillis int64  `json:"query_time_in_millis,omitempty"`
-	QueryCurrent      int64  `json:"query_current,omitempty"`
-	FetchTotal        int64  `json:"fetch_total,omitempty"`
-	FetchTime         string `json:"fetch_time,omitempty"`
-	FetchTimeInMillis int64  `json:"fetch_time_in_millis,omitempty"`
-	FetchCurrent      int64  `json:"fetch_current,omitempty"`
+	OpenContexts        int64  `json:"open_contexts,omitempty"`
+	QueryTotal          int64  `json:"query_total,omitempty"`
+	QueryTime           string `json:"query_time,omitempty"`
+	QueryTimeInMillis   int64  `json:"query_time_in_millis,omitempty"`
+	QueryCurrent        int64  `json:"query_current,omitempty"`
+	FetchTotal          int64  `json:"fetch_total,omitempty"`
+	FetchTime           string `json:"fetch_time,omitempty"`
+	FetchTimeInMillis   int64  `json:"fetch_time_in_millis,omitempty"`
+	FetchCurrent        int64  `json:"fetch_current,omitempty"`
+	ScrollTotal         int64  `json:"scroll_total,omitempty"`
+	ScrollTime          string `json:"scroll_time,omitempty"`
+	ScrollTimeInMillis  int64  `json:"scroll_time_in_millis,omitempty"`
+	ScrollCurrent       int64  `json:"scroll_current,omitempty"`
+	SuggestTotal        int64  `json:"suggest_total,omitempty"`
+	SuggestTime         string `json:"suggest_time,omitempty"`
+	SuggestTimeInMillis int64  `json:"suggest_time_in_millis,omitempty"`
+	SuggestCurrent      int64  `json:"suggest_current,omitempty"`
 }
 
 type IndexStatsMerges struct {

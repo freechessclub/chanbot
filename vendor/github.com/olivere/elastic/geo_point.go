@@ -1,10 +1,11 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,7 +13,8 @@ import (
 
 // GeoPoint is a geographic position described via latitude and longitude.
 type GeoPoint struct {
-	Lat, Lon float64
+	Lat float64 `json:"lat"`
+	Lon float64 `json:"lon"`
 }
 
 // Source returns the object to be serialized in Elasticsearch DSL.
@@ -21,6 +23,11 @@ func (pt *GeoPoint) Source() map[string]float64 {
 		"lat": pt.Lat,
 		"lon": pt.Lon,
 	}
+}
+
+// MarshalJSON encodes the GeoPoint to JSON.
+func (pt *GeoPoint) MarshalJSON() ([]byte, error) {
+	return json.Marshal(pt.Source())
 }
 
 // GeoPointFromLatLon initializes a new GeoPoint by latitude and longitude.

@@ -1,3 +1,2 @@
-# FICS Channel Logger
+# FICS Channel Bot
 
-Play free online chess at [Free Chess Club](http://www.freechess.club).

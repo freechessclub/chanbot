@@ -1,11 +1,12 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
+// TermSuggester suggests terms based on edit distance.
 // For more details, see
-// http://www.elasticsearch.org/guide/reference/api/search/term-suggest/
+// https://www.elastic.co/guide/en/elasticsearch/reference/6.7/search-suggesters-term.html.
 type TermSuggester struct {
 	Suggester
 	name           string
@@ -18,110 +19,109 @@ type TermSuggester struct {
 
 	// fields specific to term suggester
 	suggestMode    string
-	accuracy       *float32
+	accuracy       *float64
 	sort           string
 	stringDistance string
 	maxEdits       *int
 	maxInspections *int
-	maxTermFreq    *float32
+	maxTermFreq    *float64
 	prefixLength   *int
 	minWordLength  *int
-	minDocFreq     *float32
+	minDocFreq     *float64
 }
 
-// Creates a new term suggester.
-func NewTermSuggester(name string) TermSuggester {
-	return TermSuggester{
-		name:           name,
-		contextQueries: make([]SuggesterContextQuery, 0),
+// NewTermSuggester creates a new TermSuggester.
+func NewTermSuggester(name string) *TermSuggester {
+	return &TermSuggester{
+		name: name,
 	}
 }
 
-func (q TermSuggester) Name() string {
+func (q *TermSuggester) Name() string {
 	return q.name
 }
 
-func (q TermSuggester) Text(text string) TermSuggester {
+func (q *TermSuggester) Text(text string) *TermSuggester {
 	q.text = text
 	return q
 }
 
-func (q TermSuggester) Field(field string) TermSuggester {
+func (q *TermSuggester) Field(field string) *TermSuggester {
 	q.field = field
 	return q
 }
 
-func (q TermSuggester) Analyzer(analyzer string) TermSuggester {
+func (q *TermSuggester) Analyzer(analyzer string) *TermSuggester {
 	q.analyzer = analyzer
 	return q
 }
 
-func (q TermSuggester) Size(size int) TermSuggester {
+func (q *TermSuggester) Size(size int) *TermSuggester {
 	q.size = &size
 	return q
 }
 
-func (q TermSuggester) ShardSize(shardSize int) TermSuggester {
+func (q *TermSuggester) ShardSize(shardSize int) *TermSuggester {
 	q.shardSize = &shardSize
 	return q
 }
 
-func (q TermSuggester) ContextQuery(query SuggesterContextQuery) TermSuggester {
+func (q *TermSuggester) ContextQuery(query SuggesterContextQuery) *TermSuggester {
 	q.contextQueries = append(q.contextQueries, query)
 	return q
 }
 
-func (q TermSuggester) ContextQueries(queries ...SuggesterContextQuery) TermSuggester {
+func (q *TermSuggester) ContextQueries(queries ...SuggesterContextQuery) *TermSuggester {
 	q.contextQueries = append(q.contextQueries, queries...)
 	return q
 }
 
-func (q TermSuggester) SuggestMode(suggestMode string) TermSuggester {
+func (q *TermSuggester) SuggestMode(suggestMode string) *TermSuggester {
 	q.suggestMode = suggestMode
 	return q
 }
 
-func (q TermSuggester) Accuracy(accuracy float32) TermSuggester {
+func (q *TermSuggester) Accuracy(accuracy float64) *TermSuggester {
 	q.accuracy = &accuracy
 	return q
 }
 
-func (q TermSuggester) Sort(sort string) TermSuggester {
+func (q *TermSuggester) Sort(sort string) *TermSuggester {
 	q.sort = sort
 	return q
 }
 
-func (q TermSuggester) StringDistance(stringDistance string) TermSuggester {
+func (q *TermSuggester) StringDistance(stringDistance string) *TermSuggester {
 	q.stringDistance = stringDistance
 	return q
 }
 
-func (q TermSuggester) MaxEdits(maxEdits int) TermSuggester {
+func (q *TermSuggester) MaxEdits(maxEdits int) *TermSuggester {
 	q.maxEdits = &maxEdits
 	return q
 }
 
-func (q TermSuggester) MaxInspections(maxInspections int) TermSuggester {
+func (q *TermSuggester) MaxInspections(maxInspections int) *TermSuggester {
 	q.maxInspections = &maxInspections
 	return q
 }
 
-func (q TermSuggester) MaxTermFreq(maxTermFreq float32) TermSuggester {
+func (q *TermSuggester) MaxTermFreq(maxTermFreq float64) *TermSuggester {
 	q.maxTermFreq = &maxTermFreq
 	return q
 }
 
-func (q TermSuggester) PrefixLength(prefixLength int) TermSuggester {
+func (q *TermSuggester) PrefixLength(prefixLength int) *TermSuggester {
 	q.prefixLength = &prefixLength
 	return q
 }
 
-func (q TermSuggester) MinWordLength(minWordLength int) TermSuggester {
+func (q *TermSuggester) MinWordLength(minWordLength int) *TermSuggester {
 	q.minWordLength = &minWordLength
 	return q
 }
 
-func (q TermSuggester) MinDocFreq(minDocFreq float32) TermSuggester {
+func (q *TermSuggester) MinDocFreq(minDocFreq float64) *TermSuggester {
 	q.minDocFreq = &minDocFreq
 	return q
 }
@@ -135,8 +135,8 @@ type termSuggesterRequest struct {
 	Term interface{} `json:"term"`
 }
 
-// Creates the source for the term suggester.
-func (q TermSuggester) Source(includeName bool) interface{} {
+// Source generates the source for the term suggester.
+func (q *TermSuggester) Source(includeName bool) (interface{}, error) {
 	// "suggest" : {
 	//   "my-suggest-1" : {
 	//     "text" : "the amsterdma meetpu",
@@ -174,13 +174,21 @@ func (q TermSuggester) Source(includeName bool) interface{} {
 	switch len(q.contextQueries) {
 	case 0:
 	case 1:
-		suggester["context"] = q.contextQueries[0].Source()
-	default:
-		ctxq := make([]interface{}, 0)
-		for _, query := range q.contextQueries {
-			ctxq = append(ctxq, query.Source())
+		src, err := q.contextQueries[0].Source()
+		if err != nil {
+			return nil, err
 		}
-		suggester["context"] = ctxq
+		suggester["contexts"] = src
+	default:
+		ctxq := make([]interface{}, len(q.contextQueries))
+		for i, query := range q.contextQueries {
+			src, err := query.Source()
+			if err != nil {
+				return nil, err
+			}
+			ctxq[i] = src
+		}
+		suggester["contexts"] = ctxq
 	}
 
 	// Specific to term suggester
@@ -206,7 +214,7 @@ func (q TermSuggester) Source(includeName bool) interface{} {
 		suggester["max_term_freq"] = *q.maxTermFreq
 	}
 	if q.prefixLength != nil {
-		suggester["prefix_len"] = *q.prefixLength
+		suggester["prefix_length"] = *q.prefixLength
 	}
 	if q.minWordLength != nil {
 		suggester["min_word_len"] = *q.minWordLength
@@ -216,10 +224,10 @@ func (q TermSuggester) Source(includeName bool) interface{} {
 	}
 
 	if !includeName {
-		return ts
+		return ts, nil
 	}
 
 	source := make(map[string]interface{})
 	source[q.name] = ts
-	return source
+	return source, nil
 }

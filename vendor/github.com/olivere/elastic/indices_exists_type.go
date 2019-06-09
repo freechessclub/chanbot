@@ -1,11 +1,13 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -13,36 +15,36 @@ import (
 )
 
 // IndicesExistsTypeService checks if one or more types exist in one or more indices.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/indices-types-exists.html.
+//
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/indices-types-exists.html
+// for details.
 type IndicesExistsTypeService struct {
 	client            *Client
 	pretty            bool
-	index             []string
 	typ               []string
-	allowNoIndices    *bool
+	index             []string
 	expandWildcards   string
 	local             *bool
 	ignoreUnavailable *bool
+	allowNoIndices    *bool
 }
 
 // NewIndicesExistsTypeService creates a new IndicesExistsTypeService.
 func NewIndicesExistsTypeService(client *Client) *IndicesExistsTypeService {
 	return &IndicesExistsTypeService{
 		client: client,
-		index:  make([]string, 0),
-		typ:    make([]string, 0),
 	}
 }
 
 // Index is a list of index names; use `_all` to check the types across all indices.
-func (s *IndicesExistsTypeService) Index(index ...string) *IndicesExistsTypeService {
-	s.index = append(s.index, index...)
+func (s *IndicesExistsTypeService) Index(indices ...string) *IndicesExistsTypeService {
+	s.index = append(s.index, indices...)
 	return s
 }
 
 // Type is a list of document types to check.
-func (s *IndicesExistsTypeService) Type(typ ...string) *IndicesExistsTypeService {
-	s.typ = append(s.typ, typ...)
+func (s *IndicesExistsTypeService) Type(types ...string) *IndicesExistsTypeService {
+	s.typ = append(s.typ, types...)
 	return s
 }
 
@@ -83,14 +85,10 @@ func (s *IndicesExistsTypeService) Pretty(pretty bool) *IndicesExistsTypeService
 
 // buildURL builds the URL for the operation.
 func (s *IndicesExistsTypeService) buildURL() (string, url.Values, error) {
-	if err := s.Validate(); err != nil {
-		return "", url.Values{}, err
-	}
-
 	// Build URL
-	path, err := uritemplates.Expand("/{index}/{type}", map[string]string{
-		"type":  strings.Join(s.typ, ","),
+	path, err := uritemplates.Expand("/{index}/_mapping/{type}", map[string]string{
 		"index": strings.Join(s.index, ","),
+		"type":  strings.Join(s.typ, ","),
 	})
 	if err != nil {
 		return "", url.Values{}, err
@@ -99,19 +97,19 @@ func (s *IndicesExistsTypeService) buildURL() (string, url.Values, error) {
 	// Add query string parameters
 	params := url.Values{}
 	if s.pretty {
-		params.Set("pretty", "1")
-	}
-	if s.expandWildcards != "" {
-		params.Set("expand_wildcards", s.expandWildcards)
-	}
-	if s.local != nil {
-		params.Set("local", fmt.Sprintf("%v", *s.local))
+		params.Set("pretty", "true")
 	}
 	if s.ignoreUnavailable != nil {
 		params.Set("ignore_unavailable", fmt.Sprintf("%v", *s.ignoreUnavailable))
 	}
 	if s.allowNoIndices != nil {
 		params.Set("allow_no_indices", fmt.Sprintf("%v", *s.allowNoIndices))
+	}
+	if s.expandWildcards != "" {
+		params.Set("expand_wildcards", s.expandWildcards)
+	}
+	if s.local != nil {
+		params.Set("local", fmt.Sprintf("%v", *s.local))
 	}
 	return path, params, nil
 }
@@ -132,7 +130,12 @@ func (s *IndicesExistsTypeService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *IndicesExistsTypeService) Do() (bool, error) {
+func (s *IndicesExistsTypeService) Do(ctx context.Context) (bool, error) {
+	// Check pre-conditions
+	if err := s.Validate(); err != nil {
+		return false, err
+	}
+
 	// Get URL for request
 	path, params, err := s.buildURL()
 	if err != nil {
@@ -140,16 +143,23 @@ func (s *IndicesExistsTypeService) Do() (bool, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("HEAD", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
+		Method:       "HEAD",
+		Path:         path,
+		Params:       params,
+		IgnoreErrors: []int{404},
+	})
 	if err != nil {
 		return false, err
 	}
 
 	// Return operation response
-	if res.StatusCode == 200 {
+	switch res.StatusCode {
+	case http.StatusOK:
 		return true, nil
-	} else if res.StatusCode == 404 {
+	case http.StatusNotFound:
 		return false, nil
+	default:
+		return false, fmt.Errorf("elastic: got HTTP code %d when it should have been either 200 or 404", res.StatusCode)
 	}
-	return false, fmt.Errorf("elastic: got HTTP code %d when it should have been either 200 or 404", res.StatusCode)
 }

@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -26,6 +26,7 @@ func NewRequest(method, url string) (*Request, error) {
 	}
 	req.Header.Add("User-Agent", "elastic/"+Version+" ("+runtime.GOOS+"-"+runtime.GOARCH+")")
 	req.Header.Add("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
 	return (*Request)(req), nil
 }
 
@@ -34,21 +35,20 @@ func (r *Request) SetBasicAuth(username, password string) {
 	((*http.Request)(r)).SetBasicAuth(username, password)
 }
 
-// SetBody encodes the body in the request. Optionally, it performs GZIP compression.
+// SetBody encodes the body in the request. You may pass a flag to
+// compress the request via gzip.
 func (r *Request) SetBody(body interface{}, gzipCompress bool) error {
 	switch b := body.(type) {
 	case string:
 		if gzipCompress {
 			return r.setBodyGzip(b)
-		} else {
-			return r.setBodyString(b)
 		}
+		return r.setBodyString(b)
 	default:
 		if gzipCompress {
 			return r.setBodyGzip(body)
-		} else {
-			return r.setBodyJson(body)
 		}
+		return r.setBodyJson(body)
 	}
 }
 

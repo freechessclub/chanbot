@@ -1,11 +1,11 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -14,7 +14,7 @@ import (
 )
 
 // IndicesGetTemplateService returns an index template.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/1.4/indices-templates.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/indices-templates.html.
 type IndicesGetTemplateService struct {
 	client       *Client
 	pretty       bool
@@ -75,7 +75,7 @@ func (s *IndicesGetTemplateService) buildURL() (string, url.Values, error) {
 	// Add query string parameters
 	params := url.Values{}
 	if s.pretty {
-		params.Set("pretty", "1")
+		params.Set("pretty", "true")
 	}
 	if s.flatSettings != nil {
 		params.Set("flat_settings", fmt.Sprintf("%v", *s.flatSettings))
@@ -92,7 +92,7 @@ func (s *IndicesGetTemplateService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *IndicesGetTemplateService) Do() (map[string]*IndicesGetTemplateResponse, error) {
+func (s *IndicesGetTemplateService) Do(ctx context.Context) (map[string]*IndicesGetTemplateResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -105,14 +105,18 @@ func (s *IndicesGetTemplateService) Do() (map[string]*IndicesGetTemplateResponse
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("GET", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
+		Method: "GET",
+		Path:   path,
+		Params: params,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	// Return operation response
 	var ret map[string]*IndicesGetTemplateResponse
-	if err := json.Unmarshal(res.Body, &ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, &ret); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -120,9 +124,10 @@ func (s *IndicesGetTemplateService) Do() (map[string]*IndicesGetTemplateResponse
 
 // IndicesGetTemplateResponse is the response of IndicesGetTemplateService.Do.
 type IndicesGetTemplateResponse struct {
-	Order    int                    `json:"order,omitempty"`
-	Template string                 `json:"template,omitempty"`
-	Settings map[string]interface{} `json:"settings,omitempty"`
-	Mappings map[string]interface{} `json:"mappings,omitempty"`
-	Aliases  map[string]interface{} `json:"aliases,omitempty"`
+	Order         int                    `json:"order,omitempty"`
+	Version       int                    `json:"version,omitempty"`
+	IndexPatterns []string               `json:"index_patterns,omitempty"`
+	Settings      map[string]interface{} `json:"settings,omitempty"`
+	Mappings      map[string]interface{} `json:"mappings,omitempty"`
+	Aliases       map[string]interface{} `json:"aliases,omitempty"`
 }

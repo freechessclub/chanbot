@@ -1,11 +1,11 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/url"
 
@@ -13,7 +13,7 @@ import (
 )
 
 // IndicesDeleteTemplateService deletes index templates.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/1.4/indices-templates.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/indices-templates.html.
 type IndicesDeleteTemplateService struct {
 	client        *Client
 	pretty        bool
@@ -66,7 +66,7 @@ func (s *IndicesDeleteTemplateService) buildURL() (string, url.Values, error) {
 	// Add query string parameters
 	params := url.Values{}
 	if s.pretty {
-		params.Set("pretty", "1")
+		params.Set("pretty", "true")
 	}
 	if s.timeout != "" {
 		params.Set("timeout", s.timeout)
@@ -90,7 +90,7 @@ func (s *IndicesDeleteTemplateService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *IndicesDeleteTemplateService) Do() (*IndicesDeleteTemplateResponse, error) {
+func (s *IndicesDeleteTemplateService) Do(ctx context.Context) (*IndicesDeleteTemplateResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -103,14 +103,18 @@ func (s *IndicesDeleteTemplateService) Do() (*IndicesDeleteTemplateResponse, err
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("DELETE", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
+		Method: "DELETE",
+		Path:   path,
+		Params: params,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	// Return operation response
 	ret := new(IndicesDeleteTemplateResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -118,5 +122,7 @@ func (s *IndicesDeleteTemplateService) Do() (*IndicesDeleteTemplateResponse, err
 
 // IndicesDeleteTemplateResponse is the response of IndicesDeleteTemplateService.Do.
 type IndicesDeleteTemplateResponse struct {
-	Acknowledged bool `json:"acknowledged,omitempty"`
+	Acknowledged       bool   `json:"acknowledged"`
+	ShardsAcknowledged bool   `json:"shards_acknowledged"`
+	Index              string `json:"index,omitempty"`
 }

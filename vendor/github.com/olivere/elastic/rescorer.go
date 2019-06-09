@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -6,7 +6,7 @@ package elastic
 
 type Rescorer interface {
 	Name() string
-	Source() interface{}
+	Source() (interface{}, error)
 }
 
 // -- Query Rescorer --
@@ -43,9 +43,14 @@ func (r *QueryRescorer) ScoreMode(scoreMode string) *QueryRescorer {
 	return r
 }
 
-func (r *QueryRescorer) Source() interface{} {
+func (r *QueryRescorer) Source() (interface{}, error) {
+	rescoreQuery, err := r.query.Source()
+	if err != nil {
+		return nil, err
+	}
+
 	source := make(map[string]interface{})
-	source["rescore_query"] = r.query.Source()
+	source["rescore_query"] = rescoreQuery
 	if r.queryWeight != nil {
 		source["query_weight"] = *r.queryWeight
 	}
@@ -55,5 +60,5 @@ func (r *QueryRescorer) Source() interface{} {
 	if r.scoreMode != "" {
 		source["score_mode"] = r.scoreMode
 	}
-	return source
+	return source, nil
 }

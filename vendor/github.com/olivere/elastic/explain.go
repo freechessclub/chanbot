@@ -1,30 +1,21 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"log"
 	"net/url"
 	"strings"
 
 	"github.com/olivere/elastic/uritemplates"
 )
 
-var (
-	_ = fmt.Print
-	_ = log.Print
-	_ = strings.Index
-	_ = uritemplates.Expand
-	_ = url.Parse
-)
-
 // ExplainService computes a score explanation for a query and
 // a specific document.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-explain.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/search-explain.html.
 type ExplainService struct {
 	client                 *Client
 	pretty                 bool
@@ -87,7 +78,6 @@ func (s *ExplainService) Source(source string) *ExplainService {
 
 // XSourceExclude is a list of fields to exclude from the returned _source field.
 func (s *ExplainService) XSourceExclude(xSourceExclude ...string) *ExplainService {
-	s.xSourceExclude = make([]string, 0)
 	s.xSourceExclude = append(s.xSourceExclude, xSourceExclude...)
 	return s
 }
@@ -132,7 +122,6 @@ func (s *ExplainService) Df(df string) *ExplainService {
 
 // Fields is a list of fields to return in the response.
 func (s *ExplainService) Fields(fields ...string) *ExplainService {
-	s.fields = make([]string, 0)
 	s.fields = append(s.fields, fields...)
 	return s
 }
@@ -145,7 +134,6 @@ func (s *ExplainService) LowercaseExpandedTerms(lowercaseExpandedTerms bool) *Ex
 
 // XSourceInclude is a list of fields to extract and return from the _source field.
 func (s *ExplainService) XSourceInclude(xSourceInclude ...string) *ExplainService {
-	s.xSourceInclude = make([]string, 0)
 	s.xSourceInclude = append(s.xSourceInclude, xSourceInclude...)
 	return s
 }
@@ -170,7 +158,6 @@ func (s *ExplainService) Preference(preference string) *ExplainService {
 
 // XSource is true or false to return the _source field or not, or a list of fields to return.
 func (s *ExplainService) XSource(xSource ...string) *ExplainService {
-	s.xSource = make([]string, 0)
 	s.xSource = append(s.xSource, xSource...)
 	return s
 }
@@ -183,8 +170,13 @@ func (s *ExplainService) Pretty(pretty bool) *ExplainService {
 
 // Query sets a query definition using the Query DSL.
 func (s *ExplainService) Query(query Query) *ExplainService {
+	src, err := query.Source()
+	if err != nil {
+		// Do nothing in case of an error
+		return s
+	}
 	body := make(map[string]interface{})
-	body["query"] = query.Source()
+	body["query"] = src
 	s.bodyJson = body
 	return s
 }
@@ -216,7 +208,7 @@ func (s *ExplainService) buildURL() (string, url.Values, error) {
 	// Add query string parameters
 	params := url.Values{}
 	if s.pretty {
-		params.Set("pretty", "1")
+		params.Set("pretty", "true")
 	}
 	if len(s.xSource) > 0 {
 		params.Set("_source", strings.Join(s.xSource, ","))
@@ -285,7 +277,7 @@ func (s *ExplainService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *ExplainService) Do() (*ExplainResponse, error) {
+func (s *ExplainService) Do(ctx context.Context) (*ExplainResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -306,14 +298,19 @@ func (s *ExplainService) Do() (*ExplainResponse, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("GET", path, params, body)
+	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
+		Method: "GET",
+		Path:   path,
+		Params: params,
+		Body:   body,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	// Return operation response
 	ret := new(ExplainResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

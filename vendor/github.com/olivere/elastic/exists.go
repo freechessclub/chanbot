@@ -1,10 +1,11 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -12,9 +13,9 @@ import (
 	"github.com/olivere/elastic/uritemplates"
 )
 
-// ExistsService checks if a document exists.
+// ExistsService checks for the existence of a document using HEAD.
 //
-// See http://www.elastic.co/guide/en/elasticsearch/reference/current/docs-get.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/docs-get.html
 // for details.
 type ExistsService struct {
 	client     *Client
@@ -22,11 +23,11 @@ type ExistsService struct {
 	id         string
 	index      string
 	typ        string
-	parent     string
 	preference string
 	realtime   *bool
-	refresh    *bool
+	refresh    string
 	routing    string
+	parent     string
 }
 
 // NewExistsService creates a new ExistsService.
@@ -48,21 +49,14 @@ func (s *ExistsService) Index(index string) *ExistsService {
 	return s
 }
 
-// Type is the type of the document (use `_all` to fetch the first
-// document matching the ID across all types).
+// Type is the type of the document (use `_all` to fetch the first document
+// matching the ID across all types).
 func (s *ExistsService) Type(typ string) *ExistsService {
 	s.typ = typ
 	return s
 }
 
-// Parent is the ID of the parent document.
-func (s *ExistsService) Parent(parent string) *ExistsService {
-	s.parent = parent
-	return s
-}
-
-// Preference specifies the node or shard the operation should be
-// performed on (default: random).
+// Preference specifies the node or shard the operation should be performed on (default: random).
 func (s *ExistsService) Preference(preference string) *ExistsService {
 	s.preference = preference
 	return s
@@ -75,14 +69,23 @@ func (s *ExistsService) Realtime(realtime bool) *ExistsService {
 }
 
 // Refresh the shard containing the document before performing the operation.
-func (s *ExistsService) Refresh(refresh bool) *ExistsService {
-	s.refresh = &refresh
+//
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/docs-refresh.html
+// for details.
+func (s *ExistsService) Refresh(refresh string) *ExistsService {
+	s.refresh = refresh
 	return s
 }
 
-// Routing is the specific routing value.
+// Routing is a specific routing value.
 func (s *ExistsService) Routing(routing string) *ExistsService {
 	s.routing = routing
+	return s
+}
+
+// Parent is the ID of the parent document.
+func (s *ExistsService) Parent(parent string) *ExistsService {
+	s.parent = parent
 	return s
 }
 
@@ -107,22 +110,22 @@ func (s *ExistsService) buildURL() (string, url.Values, error) {
 	// Add query string parameters
 	params := url.Values{}
 	if s.pretty {
-		params.Set("pretty", "1")
+		params.Set("pretty", "true")
+	}
+	if s.realtime != nil {
+		params.Set("realtime", fmt.Sprintf("%v", *s.realtime))
+	}
+	if s.refresh != "" {
+		params.Set("refresh", s.refresh)
+	}
+	if s.routing != "" {
+		params.Set("routing", s.routing)
 	}
 	if s.parent != "" {
 		params.Set("parent", s.parent)
 	}
 	if s.preference != "" {
 		params.Set("preference", s.preference)
-	}
-	if s.realtime != nil {
-		params.Set("realtime", fmt.Sprintf("%v", *s.realtime))
-	}
-	if s.refresh != nil {
-		params.Set("refresh", fmt.Sprintf("%v", *s.refresh))
-	}
-	if s.routing != "" {
-		params.Set("routing", s.routing)
 	}
 	return path, params, nil
 }
@@ -146,7 +149,7 @@ func (s *ExistsService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *ExistsService) Do() (bool, error) {
+func (s *ExistsService) Do(ctx context.Context) (bool, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return false, err
@@ -159,12 +162,17 @@ func (s *ExistsService) Do() (bool, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("HEAD", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
+		Method:       "HEAD",
+		Path:         path,
+		Params:       params,
+		IgnoreErrors: []int{404},
+	})
 	if err != nil {
 		return false, err
 	}
 
-	// Evaluate operation response
+	// Return operation response
 	switch res.StatusCode {
 	case http.StatusOK:
 		return true, nil

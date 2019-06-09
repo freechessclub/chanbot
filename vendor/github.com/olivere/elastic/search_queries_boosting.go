@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -7,7 +7,7 @@ package elastic
 // A boosting query can be used to effectively
 // demote results that match a given query.
 // For more details, see:
-// http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/query-dsl-boosting-query.html
+// https://www.elastic.co/guide/en/elasticsearch/reference/6.7/query-dsl-boosting-query.html
 type BoostingQuery struct {
 	Query
 	positiveClause Query
@@ -17,32 +17,32 @@ type BoostingQuery struct {
 }
 
 // Creates a new boosting query.
-func NewBoostingQuery() BoostingQuery {
-	return BoostingQuery{}
+func NewBoostingQuery() *BoostingQuery {
+	return &BoostingQuery{}
 }
 
-func (q BoostingQuery) Positive(positive Query) BoostingQuery {
+func (q *BoostingQuery) Positive(positive Query) *BoostingQuery {
 	q.positiveClause = positive
 	return q
 }
 
-func (q BoostingQuery) Negative(negative Query) BoostingQuery {
+func (q *BoostingQuery) Negative(negative Query) *BoostingQuery {
 	q.negativeClause = negative
 	return q
 }
 
-func (q BoostingQuery) NegativeBoost(negativeBoost float64) BoostingQuery {
+func (q *BoostingQuery) NegativeBoost(negativeBoost float64) *BoostingQuery {
 	q.negativeBoost = &negativeBoost
 	return q
 }
 
-func (q BoostingQuery) Boost(boost float64) BoostingQuery {
+func (q *BoostingQuery) Boost(boost float64) *BoostingQuery {
 	q.boost = &boost
 	return q
 }
 
 // Creates the query source for the boosting query.
-func (q BoostingQuery) Source() interface{} {
+func (q *BoostingQuery) Source() (interface{}, error) {
 	// {
 	//     "boosting" : {
 	//         "positive" : {
@@ -69,12 +69,20 @@ func (q BoostingQuery) Source() interface{} {
 
 	// positive
 	if q.positiveClause != nil {
-		boostingClause["positive"] = q.positiveClause.Source()
+		src, err := q.positiveClause.Source()
+		if err != nil {
+			return nil, err
+		}
+		boostingClause["positive"] = src
 	}
 
 	// negative
 	if q.negativeClause != nil {
-		boostingClause["negative"] = q.negativeClause.Source()
+		src, err := q.negativeClause.Source()
+		if err != nil {
+			return nil, err
+		}
+		boostingClause["negative"] = src
 	}
 
 	if q.negativeBoost != nil {
@@ -85,5 +93,5 @@ func (q BoostingQuery) Source() interface{} {
 		boostingClause["boost"] = *q.boost
 	}
 
-	return query
+	return query, nil
 }
