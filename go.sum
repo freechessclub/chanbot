@@ -2,6 +2,8 @@ github.com/fortytw2/leaktest v1.3.0 h1:u8491cBMTQ8ft8aeV+adlcytMZylmA5nnwwkRZjI8
 github.com/fortytw2/leaktest v1.3.0/go.mod h1:jDsjWgpAGjm2CA7WthBh/CdZYEPF31XHquHwclZch5g=
 github.com/freechessclub/icsgo v0.0.0-20190602235457-1d142b363e75 h1:n15L+fiy/jM4EmY6qAKmJwBETQFmF8HKGxxX+QBdiJo=
 github.com/freechessclub/icsgo v0.0.0-20190602235457-1d142b363e75/go.mod h1:Qs+u8obsw5K5onzVOTG2UJnXgYPZbPY4SehCJRQvizM=
+github.com/freechessclub/icsgo v0.0.0-20190609082932-b46956c50613 h1:xe1yHqUebq3RXPbtjNjupVMZ4ogJMydp6yN+BltSnU0=
+github.com/freechessclub/icsgo v0.0.0-20190609082932-b46956c50613/go.mod h1:Qs+u8obsw5K5onzVOTG2UJnXgYPZbPY4SehCJRQvizM=
 github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/google/go-cmp v0.3.0 h1:crn/baboCvb5fXaQ0IJ1SGTsTVrWpDsCWC8EGETZijY=
