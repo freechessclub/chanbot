@@ -6,6 +6,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -109,8 +110,11 @@ func main() {
 						response = "No results found for " + fields[1]
 					} else {
 						for _, result := range results {
-							r := result.(*icsgo.ChannelTell)
-							response += fmt.Sprintf(" [%s: %s] ", r.Handle, r.Message)
+							var ct icsgo.ChannelTell
+							err := json.Unmarshal(*result.(*json.RawMessage), &ct)
+							if err == nil {
+								response += fmt.Sprintf(" [%s: %s] ", ct.Handle, ct.Message)
+							}
 						}
 					}
 				} else {
