@@ -30,6 +30,13 @@ var (
 )
 
 func main() {
+	// create db
+	db, err := NewElasticDB("logs", "data")
+	if err != nil {
+		log.Fatalf("failed to create elastic DB: %v", err)
+		return
+	}
+
 	// create a new FICS client
 	client, err := icsgo.NewClient(&icsgo.Config{
 		DisableTimeseal: true,
@@ -40,7 +47,7 @@ func main() {
 	}
 
 	// add some delay to make sure that the server is ready to start accepting commands
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// initialization commands here
 	if err := client.Send("set interface www.freechess.club"); err != nil {
@@ -58,13 +65,6 @@ func main() {
 			log.Printf("failed to add channel %d: %v", ch, err)
 			continue
 		}
-	}
-
-	// create db
-	db, err := NewElasticDB("logs", "data")
-	if err != nil {
-		log.Fatalf("failed to create elastic DB: %v", err)
-		return
 	}
 
 	// handle interrupts
