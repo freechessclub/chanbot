@@ -39,10 +39,21 @@ func main() {
 	}
 
 	// initialization commands here
-	client.Send("set interface www.freechess.club")
-	client.Send("set seek 0")
+	if err := client.Send("set interface www.freechess.club"); err != nil {
+		log.Fatalf("failed to set interface: %v", err)
+		return
+	}
+
+	if err := client.Send("set seek 0"); err != nil {
+		log.Fatalf("failed to turn seek off: %v", err)
+		return
+	}
+
 	for _, ch := range channels {
-		client.Send(fmt.Sprintf("+ch %d", ch))
+		if err := client.Send(fmt.Sprintf("+ch %d", ch)); err != nil {
+			log.Printf("failed to add channel %d: %v", ch, err)
+			continue
+		}
 	}
 
 	// create db
