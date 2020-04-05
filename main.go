@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/freechessclub/icsgo"
 )
@@ -37,6 +38,9 @@ func main() {
 		log.Fatalf("failed to create a new ICS client: %v", err)
 		return
 	}
+
+	// add some delay to make sure that the server is ready to start accepting commands
+	time.Sleep(2 * time.Second)
 
 	// initialization commands here
 	if err := client.Send("set interface www.freechess.club"); err != nil {
