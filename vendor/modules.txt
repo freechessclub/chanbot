@@ -1,4 +1,4 @@
-# github.com/freechessclub/icsgo v0.0.0-20190907203343-802ca215c371
+# github.com/freechessclub/icsgo v0.0.0-20200405233202-5927ca3daa6f
 github.com/freechessclub/icsgo
 # github.com/golang/protobuf v1.3.5
 github.com/golang/protobuf/proto
