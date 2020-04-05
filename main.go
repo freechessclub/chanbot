@@ -39,8 +39,8 @@ func main() {
 	}
 
 	// initialization commands here
-	client.Send("set seek 0")
 	client.Send("set interface www.freechess.club")
+	client.Send("set seek 0")
 	for _, ch := range channels {
 		client.Send(fmt.Sprintf("+ch %d", ch))
 	}
@@ -98,7 +98,7 @@ func main() {
 				var response string
 				if len(fields) > 1 && fields[0] == "search" {
 					query := map[string]interface{}{
-						"user":  fields[1],
+						"user":    fields[1],
 						"message": fields[1],
 					}
 					results, err := db.Search(query, 5)
