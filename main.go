@@ -29,6 +29,12 @@ var (
 	}
 )
 
+// MsgTimestamp represents a timestampped message
+type MsgTimestamp struct {
+	*icsgo.ChannelTell
+	Timestamp time.Time `json:"timestamp"`
+}
+
 func main() {
 	// create db
 	db, err := NewElasticDB("logs", "data")
@@ -92,7 +98,7 @@ func main() {
 		for _, msg := range msgs {
 			switch msg.(type) {
 			case *icsgo.ChannelTell:
-				_, err := db.Put(msg)
+				_, err := db.Put(MsgTimestamp{ChannelTell: msg.(*icsgo.ChannelTell), Timestamp: time.Now()})
 				if err != nil {
 					log.Printf("failed to put %v: %v", msg, err)
 				}

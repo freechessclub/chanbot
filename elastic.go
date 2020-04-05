@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/olivere/elastic"
 )
@@ -20,12 +19,6 @@ type ElasticDB struct {
 	client *elastic.Client
 	index  string
 	typ    string
-}
-
-// MsgTimestamp represents a timestampped Elastic message/doc
-type MsgTimestamp struct {
-	msg       interface{}
-	Timestamp time.Time `json:"timestamp"`
 }
 
 // NewElasticDB creates a new elastic search index
@@ -73,7 +66,7 @@ func (e *ElasticDB) Put(msg interface{}) (string, error) {
 	put, err := e.client.Index().
 		Index(e.index).
 		Type(e.typ).
-		BodyJson(MsgTimestamp{msg: msg, Timestamp: time.Now()}).
+		BodyJson(msg).
 		Do(context.Background())
 	if err != nil {
 		return "", fmt.Errorf("error indexing message %v: %v", msg, err)
