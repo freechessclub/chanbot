@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -18,6 +19,18 @@ var (
 	chTellRE    *regexp.Regexp
 	pTellRE     *regexp.Regexp
 	toldMsgRE   *regexp.Regexp
+)
+
+// type of game end messages
+const (
+	Unknown = iota
+	Resign
+	Disconnect
+	Checkmate
+	TimeForfeit
+	Draw
+	Adjourn
+	Abort
 )
 
 func init() {
@@ -66,35 +79,36 @@ func unsafeAtoi(b []byte) uint32 {
 	return uint32(i)
 }
 
-func getGameResult(p1, p2, who, action string) (string, string, GameEnd_Reason) {
+func getGameResult(p1, p2, who, action string) (string, string, uint32) {
+	action = strings.TrimSpace(action)
 	switch action {
 	case "resigns":
 		if p1 == who {
-			return p2, p1, GameEnd_RESIGN
+			return p2, p1, Resign
 		} else if p2 == who {
-			return p1, p2, GameEnd_RESIGN
+			return p1, p2, Resign
 		}
 	case "forfeits by disconnection":
 		if p1 == who {
-			return p2, p1, GameEnd_DISCONNECT
+			return p2, p1, Disconnect
 		} else if p2 == who {
-			return p1, p2, GameEnd_DISCONNECT
+			return p1, p2, Disconnect
 		}
 	case "checkmated":
 		if p1 == who {
-			return p2, p1, GameEnd_CHECKMATE
+			return p2, p1, Checkmate
 		} else if p2 == who {
-			return p1, p2, GameEnd_CHECKMATE
+			return p1, p2, Checkmate
 		}
 	case "forfeits on time":
 		if p1 == who {
-			return p2, p1, GameEnd_TIMEFORFEIT
+			return p2, p1, TimeForfeit
 		} else if p2 == who {
-			return p1, p2, GameEnd_TIMEFORFEIT
+			return p1, p2, TimeForfeit
 		}
 	case "aborted on move 1":
 	case "aborted by mutual agreement":
-		return p1, p2, GameEnd_ABORT
+		return p1, p2, Abort
 	case "drawn by mutual agreement":
 	case "drawn because both players ran out of time":
 	case "drawn by repetition":
@@ -104,11 +118,11 @@ func getGameResult(p1, p2, who, action string) (string, string, GameEnd_Reason) 
 	case "player has mating material":
 	case "drawn by adjudication":
 	case "drawn by stalemate":
-		return p1, p2, GameEnd_DRAW
+		return p1, p2, Draw
 	case "adjourned by mutual agreement":
-		return p1, p2, GameEnd_ADJOURN
+		return p1, p2, Adjourn
 	}
-	return p1, p2, -1
+	return p1, p2, Unknown
 }
 
 func decodeMessages(msg []byte) []interface{} {
@@ -128,7 +142,7 @@ func decodeMessages(msg []byte) []interface{} {
 			var msgs []interface{}
 			for i := 0; i < len(m); i++ {
 				if len(m[i]) > 0 {
-					msgs = append(msgs, decodeMessages(m[i]))
+					msgs = append(msgs, decodeMessages(m[i])...)
 				}
 			}
 			return msgs
@@ -140,6 +154,8 @@ func decodeMessages(msg []byte) []interface{} {
 			fen += "/"
 		}
 		fen += style12ToFEN(matches[8][:])
+		r, _ := strconv.Atoi(string(matches[13][:]))
+		role := int32(r)
 
 		return []interface{}{
 			&GameMove{
@@ -148,7 +164,7 @@ func decodeMessages(msg []byte) []interface{} {
 				GameId:    unsafeAtoi(matches[10][:]),
 				WhiteName: string(matches[11][:]),
 				BlackName: string(matches[12][:]),
-				Role:      unsafeAtoi(matches[13][:]),
+				Role:      role,
 				Time:      unsafeAtoi(matches[14][:]),
 				Inc:       unsafeAtoi(matches[15][:]),
 				WhiteTime: unsafeAtoi(matches[16][:]),
@@ -193,7 +209,7 @@ func decodeMessages(msg []byte) []interface{} {
 		return []interface{}{
 			&ChannelTell{
 				Channel: string(matches[2][:]),
-				Handle:  string(matches[1][:]),
+				User:    string(matches[1][:]),
 				Message: string(bytes.Replace(matches[3][:], []byte("\n"), []byte{}, -1)),
 			},
 		}
@@ -203,7 +219,7 @@ func decodeMessages(msg []byte) []interface{} {
 	if matches != nil && len(matches) > 2 {
 		return []interface{}{
 			&PrivateTell{
-				Handle:  string(matches[1][:]),
+				User:    string(matches[1][:]),
 				Message: string(bytes.Replace(matches[2][:], []byte("\n"), []byte{}, -1)),
 			},
 		}

@@ -1,17 +1,17 @@
-# github.com/freechessclub/icsgo v0.0.0-20190609082932-b46956c50613
+# github.com/freechessclub/icsgo v0.0.0-20190907203343-802ca215c371
 github.com/freechessclub/icsgo
-# github.com/golang/protobuf v1.3.1
+# github.com/golang/protobuf v1.3.5
 github.com/golang/protobuf/proto
 # github.com/mailru/easyjson v0.0.0-20190403194419-1ea4449da983
 github.com/mailru/easyjson
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
 github.com/mailru/easyjson/buffer
-# github.com/olivere/elastic v6.2.19+incompatible
+# github.com/olivere/elastic v6.2.29+incompatible
 github.com/olivere/elastic
 github.com/olivere/elastic/config
 github.com/olivere/elastic/uritemplates
-# github.com/pkg/errors v0.8.1
+# github.com/pkg/errors v0.9.1
 github.com/pkg/errors
 # github.com/ziutek/telnet v0.0.0-20180329124119-c3b780dc415b
 github.com/ziutek/telnet

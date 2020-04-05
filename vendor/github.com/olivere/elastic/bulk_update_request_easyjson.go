@@ -60,6 +60,26 @@ func easyjson1ed00e60DecodeGithubComOlivereElastic(in *jlexer.Lexer, out *bulkUp
 			out.Version = int64(in.Int64())
 		case "version_type":
 			out.VersionType = string(in.String())
+		case "if_seq_no":
+			if in.IsNull() {
+				in.Skip()
+				out.IfSeqNo = nil
+			} else {
+				if out.IfSeqNo == nil {
+					out.IfSeqNo = new(int64)
+				}
+				*out.IfSeqNo = int64(in.Int64())
+			}
+		case "if_primary_term":
+			if in.IsNull() {
+				in.Skip()
+				out.IfPrimaryTerm = nil
+			} else {
+				if out.IfPrimaryTerm == nil {
+					out.IfPrimaryTerm = new(int64)
+				}
+				*out.IfPrimaryTerm = int64(in.Int64())
+			}
 		default:
 			in.SkipRecursive()
 		}
@@ -76,12 +96,8 @@ func easyjson1ed00e60EncodeGithubComOlivereElastic(out *jwriter.Writer, in bulkU
 	_ = first
 	if in.Index != "" {
 		const prefix string = ",\"_index\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.Index))
 	}
 	if in.Type != "" {
@@ -153,6 +169,26 @@ func easyjson1ed00e60EncodeGithubComOlivereElastic(out *jwriter.Writer, in bulkU
 			out.RawString(prefix)
 		}
 		out.String(string(in.VersionType))
+	}
+	if in.IfSeqNo != nil {
+		const prefix string = ",\"if_seq_no\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.Int64(int64(*in.IfSeqNo))
+	}
+	if in.IfPrimaryTerm != nil {
+		const prefix string = ",\"if_primary_term\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.Int64(int64(*in.IfPrimaryTerm))
 	}
 	out.RawByte('}')
 }
@@ -279,12 +315,8 @@ func easyjson1ed00e60EncodeGithubComOlivereElastic1(out *jwriter.Writer, in bulk
 	_ = first
 	if in.DetectNoop != nil {
 		const prefix string = ",\"detect_noop\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Bool(bool(*in.DetectNoop))
 	}
 	if in.Doc != nil {
@@ -397,11 +429,7 @@ func easyjson1ed00e60DecodeGithubComOlivereElastic2(in *jlexer.Lexer, out *bulkU
 		in.Skip()
 	} else {
 		in.Delim('{')
-		if !in.IsDelim('}') {
-			*out = make(bulkUpdateRequestCommand)
-		} else {
-			*out = nil
-		}
+		*out = make(bulkUpdateRequestCommand)
 		for !in.IsDelim('}') {
 			key := string(in.String())
 			in.WantColon()
