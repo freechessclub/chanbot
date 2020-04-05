@@ -85,7 +85,7 @@ func main() {
 				m := msg.(*icsgo.PrivateTell)
 				ignoreTell := false
 				for _, user := range ignoreList {
-					if m.Handle == user {
+					if m.User == user {
 						ignoreTell = true
 						break
 					}
@@ -98,7 +98,7 @@ func main() {
 				var response string
 				if len(fields) > 1 && fields[0] == "search" {
 					query := map[string]interface{}{
-						"handle":  fields[1],
+						"user":  fields[1],
 						"message": fields[1],
 					}
 					results, err := db.Search(query, 5)
@@ -112,14 +112,14 @@ func main() {
 							var ct icsgo.ChannelTell
 							err := json.Unmarshal(*result.(*json.RawMessage), &ct)
 							if err == nil {
-								response += fmt.Sprintf(" [%s: %s] ", ct.Handle, ct.Message)
+								response += fmt.Sprintf(" [%s: %s] ", ct.User, ct.Message)
 							}
 						}
 					}
 				} else {
-					response = "Hello " + m.Handle + ", I am ChanLogger. Looking for something? Type \"tell ChanLogger search [term]\""
+					response = "Hello " + m.User + ", I am ChanLogger. Looking for something? Type \"tell ChanLogger search [term]\""
 				}
-				client.Send("t " + m.Handle + " " + response)
+				client.Send("t " + m.User + " " + response)
 			default:
 				log.Printf("ignoring message: %v", msg)
 			}
