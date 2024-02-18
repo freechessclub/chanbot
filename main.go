@@ -131,7 +131,7 @@ func main() {
 	// create a new FICS client
 	client, err := icsgo.NewClient(&icsgo.Config{
 		DisableTimeseal: true,
-	}, "freechess.org:5000", "ChanLogger", "")
+	}, "freechess.org:5000", "chanbot", "")
 	if err != nil {
 		log.Fatalf("failed to create a new ICS client: %v", err)
 		return
@@ -194,7 +194,7 @@ func main() {
 				if ignoreTell {
 					continue
 				}
-				response := "Hello " + m.User + ", I am ChanLogger. Looking for something?"
+				response := "Hello " + m.User + ", I am chanbot. See my logs at https://chanbot.onrender.com/"
 				client.Send([]byte("t " + m.User + " " + response))
 			}
 		}
