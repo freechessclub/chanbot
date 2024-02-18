@@ -181,7 +181,6 @@ func main() {
 				m := msg.(*icsgo.ChannelTell)
 				t := time.Now()
 				tell := []byte(t.Format("15:04:05") + "(" + m.Channel + ") " + m.User + ": " + m.Message + "\n")
-				fmt.Println(tell)
 				ringBuffer.Write(tell)
 			case *icsgo.PrivateTell:
 				m := msg.(*icsgo.PrivateTell)
