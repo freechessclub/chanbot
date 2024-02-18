@@ -56,18 +56,18 @@ func main() {
 	time.Sleep(5 * time.Second)
 
 	// initialization commands here
-	if err := client.Send("set interface www.freechess.club"); err != nil {
+	if err := client.Send([]byte("set interface www.freechess.club")); err != nil {
 		log.Fatalf("failed to set interface: %v", err)
 		return
 	}
 
-	if err := client.Send("set seek 0"); err != nil {
+	if err := client.Send([]byte("set seek 0")); err != nil {
 		log.Fatalf("failed to turn seek off: %v", err)
 		return
 	}
 
 	for _, ch := range channels {
-		if err := client.Send(fmt.Sprintf("+ch %d", ch)); err != nil {
+		if err := client.Send([]byte(fmt.Sprintf("+ch %d", ch))); err != nil {
 			log.Printf("failed to add channel %d: %v", ch, err)
 			continue
 		}
@@ -140,7 +140,7 @@ func main() {
 				} else {
 					response = "Hello " + m.User + ", I am ChanLogger. Looking for something? Type \"tell ChanLogger search [term]\""
 				}
-				client.Send("t " + m.User + " " + response)
+				client.Send([]byte("t " + m.User + " " + response))
 			default:
 				log.Printf("ignoring message: %v", msg)
 			}
