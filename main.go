@@ -29,7 +29,7 @@ var (
 		"ROBOadmin",
 		"adminBOT",
 	}
-	addr       = flag.String("addr", ":8080", "http service address")
+	addr       = flag.String("addr", ":80", "http service address")
 	ringBuffer = ringbuffer.New(1048576)
 )
 
@@ -115,7 +115,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	http.ServeFile(w, r, "index.html")
+	http.ServeFile(w, r, "home.html")
 }
 
 func main() {
