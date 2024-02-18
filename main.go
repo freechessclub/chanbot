@@ -6,17 +6,19 @@
 package main
 
 import (
-	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/freechessclub/icsgo"
+	"github.com/gorilla/websocket"
+	"github.com/smallnest/ringbuffer"
 )
 
 var (
@@ -27,7 +29,36 @@ var (
 		"ROBOadmin",
 		"adminBOT",
 	}
+	addr       = flag.String("addr", ":8080", "http service address")
+	ringBuffer = ringbuffer.New(1048576)
 )
+
+const (
+	// Time allowed to write a message to the peer.
+	writeWait = 5 * time.Second
+
+	// Maximum message size allowed from peer.
+	maxMessageSize = 4096
+
+	// Time allowed to read the next pong message from the peer.
+	pongWait = 60 * time.Second
+
+	// Send pings to peer with this period. Must be less than pongWait.
+	pingPeriod = (pongWait * 9) / 10
+
+	// Poll for messages with this period.
+	msgPeriod = 5 * time.Second
+)
+
+var (
+	newline = []byte{'\n'}
+	space   = []byte{' '}
+)
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  maxMessageSize,
+	WriteBufferSize: maxMessageSize,
+}
 
 // MsgTimestamp represents a timestampped message
 type MsgTimestamp struct {
@@ -35,13 +66,67 @@ type MsgTimestamp struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-func main() {
-	// create db
-	db, err := NewElasticDB("logs", "data")
+func writePump(ws *websocket.Conn, readPtr int) {
+	pingticker := time.NewTicker(pingPeriod)
+	msgticker := time.NewTicker(msgPeriod)
+	defer func() {
+		pingticker.Stop()
+		msgticker.Stop()
+		ws.Close()
+	}()
+
+	for {
+		select {
+		case <-msgticker.C:
+			size := ringBuffer.Length()
+			if size > readPtr {
+				ws.SetWriteDeadline(time.Now().Add(writeWait))
+				bytes := ringBuffer.Bytes()
+				if err := ws.WriteMessage(websocket.TextMessage, bytes[readPtr:]); err != nil {
+					return
+				}
+				readPtr += size
+			}
+		case <-pingticker.C:
+			ws.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func serveWs(w http.ResponseWriter, r *http.Request) {
+	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Fatalf("failed to create elastic DB: %v", err)
+		log.Println("upgrade:", err)
 		return
 	}
+	readPtr := 0
+	go writePump(ws, readPtr)
+}
+
+func serveHome(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	http.ServeFile(w, r, "index.html")
+}
+
+func main() {
+	flag.Parse()
+	http.HandleFunc("/", serveHome)
+	http.HandleFunc("/ws", serveWs)
+	server := &http.Server{
+		Addr:              *addr,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+	go server.ListenAndServe()
 
 	// create a new FICS client
 	client, err := icsgo.NewClient(&icsgo.Config{
@@ -53,14 +138,9 @@ func main() {
 	}
 
 	// add some delay to make sure that the server is ready to start accepting commands
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	// initialization commands here
-	if err := client.Send([]byte("set interface www.freechess.club")); err != nil {
-		log.Fatalf("failed to set interface: %v", err)
-		return
-	}
-
 	if err := client.Send([]byte("set seek 0")); err != nil {
 		log.Fatalf("failed to turn seek off: %v", err)
 		return
@@ -98,10 +178,11 @@ func main() {
 		for _, msg := range msgs {
 			switch msg.(type) {
 			case *icsgo.ChannelTell:
-				_, err := db.Put(MsgTimestamp{ChannelTell: msg.(*icsgo.ChannelTell), Timestamp: time.Now()})
-				if err != nil {
-					log.Printf("failed to put %v: %v", msg, err)
-				}
+				m := msg.(*icsgo.ChannelTell)
+				t := time.Now()
+				tell := []byte(t.Format("15:04:05") + "(" + m.Channel + ") " + m.User + ": " + m.Message + "\n")
+				fmt.Println(tell)
+				ringBuffer.Write(tell)
 			case *icsgo.PrivateTell:
 				m := msg.(*icsgo.PrivateTell)
 				ignoreTell := false
@@ -114,35 +195,8 @@ func main() {
 				if ignoreTell {
 					continue
 				}
-
-				fields := strings.Fields(m.Message)
-				var response string
-				if len(fields) > 1 && fields[0] == "search" {
-					query := map[string]interface{}{
-						"user":    fields[1],
-						"message": fields[1],
-					}
-					results, err := db.Search(query, 5)
-					if err != nil {
-						log.Printf("failed to search %v: %v", query, err)
-					}
-					if len(results) == 0 {
-						response = "No results found for " + fields[1]
-					} else {
-						for _, result := range results {
-							var ct icsgo.ChannelTell
-							err := json.Unmarshal(*result.(*json.RawMessage), &ct)
-							if err == nil {
-								response += fmt.Sprintf(" [%s: %s] ", ct.User, ct.Message)
-							}
-						}
-					}
-				} else {
-					response = "Hello " + m.User + ", I am ChanLogger. Looking for something? Type \"tell ChanLogger search [term]\""
-				}
+				response := "Hello " + m.User + ", I am ChanLogger. Looking for something?"
 				client.Send([]byte("t " + m.User + " " + response))
-			default:
-				log.Printf("ignoring message: %v", msg)
 			}
 		}
 	}

@@ -1,11 +1,17 @@
 module github.com/freechessclub/chanbot
 
-go 1.12
+go 1.20
 
 require (
-	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/freechessclub/icsgo v0.0.0-20220125052923-fceb78b03869
-	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/olivere/elastic v6.2.37+incompatible
+	github.com/gorilla/websocket v1.5.1
+	github.com/smallnest/ringbuffer v0.0.0-20230728150354-35801fa39d0e
+)
+
+require (
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/ziutek/telnet v0.0.0-20180329124119-c3b780dc415b // indirect
+	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 )

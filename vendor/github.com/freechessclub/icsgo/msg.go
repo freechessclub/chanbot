@@ -18,6 +18,7 @@ var (
 	gameEndRE   *regexp.Regexp
 	chTellRE    *regexp.Regexp
 	pTellRE     *regexp.Regexp
+	kibitzRE    *regexp.Regexp
 	toldMsgRE   *regexp.Regexp
 )
 
@@ -36,7 +37,7 @@ const (
 func init() {
 	// game move
 	// <12> rnbqkb-r pppppppp -----n-- -------- ----P--- -------- PPPPKPPP RNBQ-BNR B -1 0 0 1 1 0 7 Newton Einstein 1 2 12 39 39 119 122 2 K/e1-e2 (0:06) Ke2 0
-	gameMoveRE = regexp.MustCompile(`<12>\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([BW\-])\s(?:\-?[0-7])\s(?:[01])\s(?:[01])\s(?:[01])\s(?:[01])\s(?:[0-9]+)\s([0-9]+)\s([a-zA-Z]+)\s([a-zA-Z]+)\s(\-?[0-3])\s([0-9]+)\s([0-9]+)\s(?:[0-9]+)\s(?:[0-9]+)\s(\-?[0-9]+)\s(\-?[0-9]+)\s(?:[0-9]+)\s(?:\S+)\s\((?:[0-9]+)\:(?:[0-9]+)\)\s(\S+)\s(?:[01])\s(?:[0-9]+)\s(?:[0-9]+)\s*`)
+	gameMoveRE = regexp.MustCompile(`<12>\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([rnbqkpRNBQKP\-]{8})\s([BW\-])\s(?:\-?[0-7])\s(?:[01])\s(?:[01])\s(?:[01])\s(?:[01])\s(?:[0-9]+)\s([0-9]+)\s([a-zA-Z]+)\s([a-zA-Z]+)\s(\-?[0-3])\s([0-9]+)\s([0-9]+)\s(?:[0-9]+)\s(?:[0-9]+)\s(\-?[0-9]+)\s(\-?[0-9]+)\s([0-9]+)\s(?:\S+)\s\((?:[0-9]+)\:(?:[0-9]+)\)\s(\S+)\s(?:[01])\s(?:[0-9]+)\s(?:[0-9]+)\s*`)
 
 	// {Game 117 (GuestMDPS vs. guestl) Creating unrated blitz match.}
 	gameStartRE = regexp.MustCompile(`(?s)^\s*\{Game\s([0-9]+)\s\(([a-zA-Z]+)\svs\.\s([a-zA-Z]+)\)\sCreating.*\}.*`)
@@ -47,10 +48,13 @@ func init() {
 	chTellRE = regexp.MustCompile(`(?s)^([a-zA-Z]+)(?:\([A-Z\*]+\))*\(([0-9]+)\):\s+(.*)`)
 
 	// private tell
-	pTellRE = regexp.MustCompile(`(?s)^([a-zA-Z]+)(?:[\(\[][A-Z0-9\*\-]+[\)\]])* (?:tells you|says|kibitzes):\s+(.*)`)
+	pTellRE = regexp.MustCompile(`(?s)^([a-zA-Z]+)(?:[\(\[][A-Z0-9\*\-]+[\)\]])* (?:tells you|says):\s+(.*)`)
+
+	// kibitz/whispers
+	kibitzRE = regexp.MustCompile(`(?s)^([a-zA-Z]+)(?:\([A-Z0-9\*\-]+\))*\[([0-9]+)\] (?:kibitzes|whispers):\s+(.*)`)
 
 	// told status
-	toldMsgRE = regexp.MustCompile(`\(told .+\)`)
+	toldMsgRE = regexp.MustCompile(`\((?:told|kibitzed) .+\)`)
 }
 
 func style12ToFEN(b []byte) string {
@@ -169,7 +173,8 @@ func decodeMessages(msg []byte) []interface{} {
 				Inc:       unsafeAtoi(matches[15][:]),
 				WhiteTime: unsafeAtoi(matches[16][:]),
 				BlackTime: unsafeAtoi(matches[17][:]),
-				Move:      string(matches[18][:]),
+				MoveNo:    unsafeAtoi(matches[18][:]),
+				Move:      string(matches[19][:]),
 			},
 		}
 	}
@@ -221,6 +226,17 @@ func decodeMessages(msg []byte) []interface{} {
 			&PrivateTell{
 				User:    string(matches[1][:]),
 				Message: string(bytes.Replace(matches[2][:], []byte("\n"), []byte{}, -1)),
+			},
+		}
+	}
+
+	matches = kibitzRE.FindSubmatch(msg)
+	if matches != nil && len(matches) > 3 {
+		return []interface{}{
+			&ChannelTell{
+				Channel: "Game " + string(matches[2][:]),
+				User:    string(matches[1][:]),
+				Message: string(bytes.Replace(matches[3][:], []byte("\n"), []byte{}, -1)),
 			},
 		}
 	}
