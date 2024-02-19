@@ -27,7 +27,7 @@ window.onload = function () {
             var messages = evt.data.split('\n');
             for (var i = 0; i < messages.length; i++) {
                 var item = document.createElement("div");
-                item.style.color = colors[i % colors.length];
+                item.style.color = colors[Math.floor(Math.random()*colors.length)];
                 item.innerText = messages[i];
                 appendLog(item);
             }
