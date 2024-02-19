@@ -185,7 +185,7 @@ func main() {
 		panic(fmt.Sprintf("failed to turn seek off: %v", err))
 	}
 
-	if err := client.Send([]byte("set 1 I am chanbot. See my logs at https://chanbot.onrender.com/")); err != nil {
+	if err := client.Send([]byte("set 1 I am chanbot. See my logs at https://chanbot.freechess.club/")); err != nil {
 		panic(fmt.Sprintf("failed to set note 1: %v", err))
 	}
 
@@ -243,7 +243,7 @@ func main() {
 				if ignoreTell {
 					continue
 				}
-				response := "Hello " + m.User + ", I am chanbot. See my logs at https://chanbot.onrender.com/"
+				response := "Hello " + m.User + ", I am chanbot. See my logs at https://chanbot.freechess.club/"
 				client.Send([]byte("t " + m.User + " " + response))
 			}
 		}
