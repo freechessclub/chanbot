@@ -13,12 +13,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/freechessclub/icsgo"
 	"github.com/gorilla/websocket"
-	"github.com/smallnest/ringbuffer"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -29,8 +30,8 @@ var (
 		"ROBOadmin",
 		"adminBOT",
 	}
-	addr       = flag.String("addr", ":80", "http service address")
-	ringBuffer = ringbuffer.New(1048576)
+	addr    = flag.String("addr", ":8080", "http service address")
+	logFile = "chat.log"
 )
 
 const (
@@ -60,13 +61,37 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: maxMessageSize,
 }
 
-// MsgTimestamp represents a timestampped message
-type MsgTimestamp struct {
-	*icsgo.ChannelTell
-	Timestamp time.Time `json:"timestamp"`
+func readFileIfModified(lastMod time.Time, filename string) ([]byte, time.Time, error) {
+	fi, err := os.Stat(filename)
+	if err != nil {
+		return nil, lastMod, err
+	}
+	if !fi.ModTime().After(lastMod) {
+		return nil, lastMod, nil
+	}
+
+	p, err := os.ReadFile(filepath.Clean(filename))
+	if err != nil {
+		return nil, fi.ModTime(), err
+	}
+	return p, fi.ModTime(), nil
 }
 
-func writePump(ws *websocket.Conn, readPtr int) {
+func reader(ws *websocket.Conn) {
+	defer ws.Close()
+	ws.SetReadLimit(512)
+	ws.SetReadDeadline(time.Now().Add(pongWait))
+	ws.SetPongHandler(func(string) error { ws.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	for {
+		_, _, err := ws.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
+}
+
+func writer(ws *websocket.Conn, lastMod time.Time, seek int) {
+	lastError := ""
 	pingticker := time.NewTicker(pingPeriod)
 	msgticker := time.NewTicker(msgPeriod)
 	defer func() {
@@ -78,14 +103,28 @@ func writePump(ws *websocket.Conn, readPtr int) {
 	for {
 		select {
 		case <-msgticker.C:
-			size := ringBuffer.Length()
-			if size > readPtr {
-				ws.SetWriteDeadline(time.Now().Add(writeWait))
-				bytes := ringBuffer.Bytes()
-				if err := ws.WriteMessage(websocket.TextMessage, bytes[readPtr:]); err != nil {
-					return
+			var p []byte
+			var err error
+
+			p, lastMod, err = readFileIfModified(lastMod, logFile)
+			if err != nil {
+				if s := err.Error(); s != lastError {
+					lastError = s
+					p = []byte(lastError)
 				}
-				readPtr += size
+			} else {
+				lastError = ""
+			}
+
+			if p != nil {
+				size := len(p)
+				if size > seek {
+					ws.SetWriteDeadline(time.Now().Add(writeWait))
+					if err := ws.WriteMessage(websocket.TextMessage, p[seek:]); err != nil {
+						return
+					}
+					seek = size
+				}
 			}
 		case <-pingticker.C:
 			ws.SetWriteDeadline(time.Now().Add(writeWait))
@@ -99,11 +138,13 @@ func writePump(ws *websocket.Conn, readPtr int) {
 func serveWs(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("upgrade:", err)
-		return
+		panic(fmt.Sprintln("upgrade:", err))
 	}
-	readPtr := 0
-	go writePump(ws, readPtr)
+
+	lastMod := time.Unix(0, 0)
+	seek := 0
+	go writer(ws, lastMod, seek)
+	reader(ws)
 }
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
@@ -133,8 +174,7 @@ func main() {
 		DisableTimeseal: true,
 	}, "freechess.org:5000", "chanbot", "")
 	if err != nil {
-		log.Fatalf("failed to create a new ICS client: %v", err)
-		return
+		panic(fmt.Sprintf("failed to create a new ICS client: %v", err))
 	}
 
 	// add some delay to make sure that the server is ready to start accepting commands
@@ -142,16 +182,28 @@ func main() {
 
 	// initialization commands here
 	if err := client.Send([]byte("set seek 0")); err != nil {
-		log.Fatalf("failed to turn seek off: %v", err)
-		return
+		panic(fmt.Sprintf("failed to turn seek off: %v", err))
+	}
+
+	if err := client.Send([]byte("set 1 I am chanbot. See my logs at https://chanbot.onrender.com/")); err != nil {
+		panic(fmt.Sprintf("failed to set note 1: %v", err))
 	}
 
 	for _, ch := range channels {
 		if err := client.Send([]byte(fmt.Sprintf("+ch %d", ch))); err != nil {
-			log.Printf("failed to add channel %d: %v", ch, err)
-			continue
+			panic(fmt.Sprintf("failed to add channel %d: %v", ch, err))
 		}
 	}
+
+	logger := &lumberjack.Logger{
+		Filename:   logFile,
+		MaxSize:    1, // megabytes
+		MaxBackups: 5,
+		MaxAge:     7,    //days
+		Compress:   true, // disabled by default
+	}
+	log.SetFlags(log.Ltime)
+	log.SetOutput(logger)
 
 	// handle interrupts
 	c := make(chan os.Signal)
@@ -168,8 +220,7 @@ func main() {
 			break
 		}
 		if err != nil {
-			log.Fatalf("error receiving server output: %v", err)
-			break
+			panic(fmt.Sprintf("error receiving server output: %v", err))
 		}
 		if msgs == nil {
 			continue
@@ -179,9 +230,7 @@ func main() {
 			switch msg.(type) {
 			case *icsgo.ChannelTell:
 				m := msg.(*icsgo.ChannelTell)
-				t := time.Now()
-				tell := []byte(t.Format("15:04:05") + "(" + m.Channel + ") " + m.User + ": " + m.Message + "\n")
-				ringBuffer.Write(tell)
+				log.Println("(" + m.Channel + ") " + m.User + ": " + m.Message)
 			case *icsgo.PrivateTell:
 				m := msg.(*icsgo.PrivateTell)
 				ignoreTell := false

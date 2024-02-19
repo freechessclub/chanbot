@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/freechessclub/icsgo v0.0.0-20220125052923-fceb78b03869
 	github.com/gorilla/websocket v1.5.1
-	github.com/smallnest/ringbuffer v0.0.0-20230728150354-35801fa39d0e
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (

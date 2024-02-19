@@ -6,6 +6,7 @@
 window.onload = function () {
     var conn;
     var log = document.getElementById("log");
+    var colors = ["black", "dimgray", "darkblue", "darkgreen", "brown", "chocolate"]
 
     function appendLog(item) {
         var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
@@ -26,6 +27,7 @@ window.onload = function () {
             var messages = evt.data.split('\n');
             for (var i = 0; i < messages.length; i++) {
                 var item = document.createElement("div");
+                item.style.color = colors[i % colors.length];
                 item.innerText = messages[i];
                 appendLog(item);
             }
@@ -49,6 +51,10 @@ body {
     width: 100%;
     height: 100%;
     background: gray;
+    font-family: "Lexend", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 300;
+    font-style: normal;
 }
 
 #log {
@@ -59,11 +65,14 @@ body {
     top: 0.5em;
     left: 0.5em;
     right: 0.5em;
-    bottom: 3em;
+    bottom: 0.5em;
     overflow: auto;
 }
 
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
 </head>
 <body>
 <div id="log"></div>
