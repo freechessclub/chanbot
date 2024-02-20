@@ -1,80 +1,187 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Channel Log</title>
 <script type="text/javascript">
 window.onload = function () {
-    var conn;
-    var log = document.getElementById("log");
+    var items = [];
+    const log = document.getElementById('log');
+    const pagination = document.getElementById('pagination');
+    const status = document.getElementById('status');
+    let itemsPerPage = calculateItemsPerPage();
     var colors = ["black", "dimgray", "darkblue", "darkgreen", "brown", "chocolate"]
 
-    function appendLog(item) {
-        var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
-        log.appendChild(item);
-        if (doScroll) {
-            log.scrollTop = log.scrollHeight - log.clientHeight;
+    function displayItems(pageNumber) {
+        log.innerHTML = '';
+
+        const startIndex = (pageNumber - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const displayedItems = items.slice(startIndex, endIndex);
+
+        displayedItems.forEach(item => {
+            const div = document.createElement('div');
+            div.textContent = item;
+            div.style.color = colors[Math.floor(Math.random()*colors.length)];
+            var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+            log.appendChild(div);
+            if (doScroll) {
+                log.scrollTop = log.scrollHeight - log.clientHeight;
+            }
+        });
+    }
+
+    function calculateItemsPerPage() {
+        const screenHeight = window.innerHeight;
+        const itemHeight = 8;
+        const itemsPerPage = Math.floor(screenHeight / itemHeight);
+        return itemsPerPage;
+    }
+
+    function createPaginationButtons(currPage) {
+        pagination.innerHTML = '';
+        const numPages = Math.ceil(items.length / itemsPerPage);
+        for (let i = 1; i <= numPages; i++) {
+            const button = document.createElement('button');
+            if (i == currPage) {
+                button.classList.add('active');
+                button.disabled = true;
+            }
+            button.textContent = i;
+            button.addEventListener('click', function () {
+                displayItems(i);
+                const buttons = pagination.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.disabled = false; // Enable all buttons
+                });
+
+                button.classList.add('active');
+                button.disabled = true; // Disable the clicked button
+            });
+            pagination.appendChild(button);
         }
     }
 
     if (window["WebSocket"]) {
-        conn = new WebSocket("wss://" + document.location.host + "/ws");
+        var pageShown = false;
+        var connClosed = false;
+
+        function startCountdown() {
+            let count = 5;
+            const countdown = setInterval(() => {
+                if (connClosed) {
+                    clearInterval(countdown);
+                    return;
+                }
+                count--;
+                status.textContent = "Reloading in " + count + " seconds...";
+
+                if (count <= 0) {
+                    clearInterval(countdown);
+                    status.textContent = '';
+                }
+            }, 1000);
+        }
+        startCountdown();
+
+        var conn = new WebSocket("ws://" + document.location.host + "/ws");
         conn.onclose = function (evt) {
-            var item = document.createElement("div");
-            item.innerHTML = "<b>Connection closed.</b>";
-            appendLog(item);
+            status.innerHTML = "Connection closed.";
+            connClosed = false;
         };
         conn.onmessage = function (evt) {
             var messages = evt.data.split('\n');
-            for (var i = 0; i < messages.length; i++) {
-                var item = document.createElement("div");
-                item.style.color = colors[Math.floor(Math.random()*colors.length)];
-                item.innerText = messages[i];
-                appendLog(item);
+            items = items.concat(messages);
+
+            const numPagesBefore = Math.ceil((items.length - 1) / itemsPerPage);
+            const numPagesAfter = Math.ceil(items.length / itemsPerPage);
+            if (!pageShown || numPagesAfter > numPagesBefore) {
+                createPaginationButtons(numPagesAfter);
+                pageShown = true;
             }
+            displayItems(numPagesAfter);
+            setTimeout(startCountdown, 1000);
         };
     } else {
-        var item = document.createElement("div");
-        item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
-        appendLog(item);
+        status.innerHTML = "Your browser does not support WebSockets.";
     }
 };
 </script>
 <style type="text/css">
-html {
-    overflow: hidden;
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Lexend", sans-serif;
+    background: gray;
+    height: 100vh;
 }
 
-body {
-    overflow: hidden;
-    padding: 0;
-    margin: 0;
-    width: 100%;
+#container {
+    position: relative;
     height: 100%;
-    background: gray;
-    font-family: "Lexend", sans-serif;
-    font-optical-sizing: auto;
-    font-weight: 300;
-    font-style: normal;
+}
+
+#status {
+    background: lightgray;
+    padding: 5px;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    height: 20px;
+    font-weight: bold;
 }
 
 #log {
     background: white;
-    margin: 0;
-    padding: 0.5em 0.5em 0.5em 0.5em;
+    padding: 10px;
     position: absolute;
-    top: 0.5em;
-    left: 0.5em;
-    right: 0.5em;
-    bottom: 0.5em;
+    top: 40px;
+    left: 10px;
+    right: 10px;
+    bottom: 40px;
     overflow: auto;
 }
 
+#pagination {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    height: 20px;
+    text-align: center;
+}
+
+#pagination button {
+    margin: 0 5px;
+    padding: 5px 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+#pagination button:hover {
+    background-color: #0056b3;
+}
+
+#pagination button.active {
+    background-color: #4CAF50;
+    color: white;
+}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
 </head>
 <body>
-<div id="log"></div>
+<div id="container">
+    <div id="status"></div>
+    <div id="log"></div>
+    <div id="pagination"></div>
+</div>
 </body>
 </html>
