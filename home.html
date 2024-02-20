@@ -52,7 +52,6 @@ window.onload = function () {
             }
             button.textContent = i;
             button.addEventListener('click', function () {
-                displayItems(i);
                 const buttons = pagination.querySelectorAll('button');
                 buttons.forEach(btn => {
                     btn.classList.remove('active');
@@ -61,6 +60,7 @@ window.onload = function () {
 
                 button.classList.add('active');
                 button.disabled = true; // Disable the clicked button
+                displayItems(i);
             });
             pagination.appendChild(button);
         }
