@@ -86,7 +86,7 @@ window.onload = function () {
         }
         startCountdown();
 
-        var conn = new WebSocket("ws://" + document.location.host + "/ws");
+        var conn = new WebSocket("wss://" + document.location.host + "/ws");
         conn.onclose = function (evt) {
             status.innerHTML = "Connection closed.";
             connClosed = false;
