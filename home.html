@@ -11,9 +11,14 @@ window.onload = function () {
     const pagination = document.getElementById('pagination');
     const status = document.getElementById('status');
     let itemsPerPage = calculateItemsPerPage();
+    let currPage = 0;
+
     var colors = ["black", "dimgray", "darkblue", "darkgreen", "brown", "chocolate"]
 
     function displayItems(pageNumber) {
+        if (currPage != pageNumber) {
+            return;
+        }
         log.innerHTML = '';
 
         const startIndex = (pageNumber - 1) * itemsPerPage;
@@ -41,7 +46,7 @@ window.onload = function () {
         return itemsPerPage;
     }
 
-    function createPaginationButtons(currPage) {
+    function createPaginationButtons() {
         pagination.innerHTML = '';
         const numPages = Math.ceil(items.length / itemsPerPage);
         for (let i = 1; i <= numPages; i++) {
@@ -55,11 +60,12 @@ window.onload = function () {
                 const buttons = pagination.querySelectorAll('button');
                 buttons.forEach(btn => {
                     btn.classList.remove('active');
-                    btn.disabled = false; // Enable all buttons
+                    btn.disabled = false;
                 });
 
                 button.classList.add('active');
-                button.disabled = true; // Disable the clicked button
+                button.disabled = true;
+                currPage = i;
                 displayItems(i);
             });
             pagination.appendChild(button);
@@ -67,7 +73,6 @@ window.onload = function () {
     }
 
     if (window["WebSocket"]) {
-        var pageShown = false;
         var connClosed = false;
 
         function startCountdown() {
@@ -99,9 +104,9 @@ window.onload = function () {
 
             const numPagesBefore = Math.ceil((items.length - 1) / itemsPerPage);
             const numPagesAfter = Math.ceil(items.length / itemsPerPage);
-            if (!pageShown || numPagesAfter > numPagesBefore) {
-                createPaginationButtons(numPagesAfter);
-                pageShown = true;
+            if (!currPage || numPagesAfter > numPagesBefore) {
+                currPage = numPagesAfter
+                createPaginationButtons();
             }
             displayItems(numPagesAfter);
             setTimeout(startCountdown, 1000);
