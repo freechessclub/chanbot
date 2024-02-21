@@ -113,10 +113,27 @@ window.onload = function () {
             displayItems(numPagesAfter);
             setTimeout(startCountdown, 1000);
         };
+
+          // Filter function
+        document.getElementById('filter').addEventListener('input', function() {
+            console.log("test");
+            const filterText = this.value.toLowerCase();
+            const divs = document.getElementById('log').getElementsByTagName('div');
+
+            Array.from(divs).forEach(div => {
+                if (div.textContent.toLowerCase().indexOf(filterText) > -1) {
+                    div.classList.remove('hidden');
+                } else {
+                    div.classList.add('hidden');
+                }
+            });
+        });
+
     } else {
         status.innerHTML = "Your browser does not support WebSockets.";
     }
 };
+
 </script>
 <style type="text/css">
 body {
@@ -131,8 +148,13 @@ body {
     position: relative;
     height: 100%;
 }
-
 #status {
+    font-weight: bold;
+}
+#status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     background: lightgray;
     padding: 5px;
     position: absolute;
@@ -140,9 +162,16 @@ body {
     left: 10px;
     right: 10px;
     height: 20px;
-    font-weight: bold;
 }
-
+#status-bar label {
+  margin-left: auto;
+  margin-right: 5px;
+}
+#status-bar input[type="text"] {
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
 #log {
     background: white;
     padding: 10px;
@@ -153,7 +182,6 @@ body {
     bottom: 40px;
     overflow: auto;
 }
-
 #pagination {
     position: absolute;
     left: 10px;
@@ -162,7 +190,6 @@ body {
     height: 20px;
     text-align: center;
 }
-
 #pagination button {
     margin: 0 5px;
     padding: 5px 10px;
@@ -172,14 +199,15 @@ body {
     cursor: pointer;
     border-radius: 3px;
 }
-
 #pagination button:hover {
     background-color: #0056b3;
 }
-
 #pagination button.active {
     background-color: #4CAF50;
     color: white;
+}
+.hidden {
+    display: none;
 }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -188,7 +216,11 @@ body {
 </head>
 <body>
 <div id="container">
-    <div id="status"></div>
+    <div id="status-bar">
+        <div id="status"></div>
+        <label for="filter">Filter: </label>
+        <input type="text" id="filter">
+    </div>
     <div id="log"></div>
     <div id="pagination"></div>
 </div>
