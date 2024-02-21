@@ -12,7 +12,7 @@ window.onload = function () {
     const status = document.getElementById('status');
     let itemsPerPage = calculateItemsPerPage();
     let currPage = 0;
-
+    const maxPages = 5;
     var colors = ["black", "dimgray", "darkblue", "darkgreen", "brown", "chocolate"]
 
     function displayItems(pageNumber) {
@@ -48,8 +48,9 @@ window.onload = function () {
 
     function createPaginationButtons() {
         pagination.innerHTML = '';
-        const numPages = Math.ceil(items.length / itemsPerPage);
-        for (let i = 1; i <= numPages; i++) {
+        const numPages = Math.ceil(items.length / itemsPerPage)
+        const showPages = Math.min(numPages, maxPages);
+        for (let i = 1; i <= showPages; i++) {
             const button = document.createElement('button');
             if (i == currPage) {
                 button.classList.add('active');
@@ -65,8 +66,8 @@ window.onload = function () {
 
                 button.classList.add('active');
                 button.disabled = true;
-                currPage = i;
-                displayItems(i);
+                currPage = (numPages - maxPages + i);
+                displayItems(currPage);
             });
             pagination.appendChild(button);
         }
