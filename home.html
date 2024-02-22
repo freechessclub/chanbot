@@ -14,7 +14,7 @@ window.onload = function () {
     let itemsPerPage = calculateItemsPerPage();
     let currPage = 0;
     const maxPages = 5;
-    var colors = ["black", "dimgray", "darkblue", "darkgreen", "brown", "chocolate"]
+    var colors = ["black", "dimgray", "darkblue", "darkgreen", "brown", "chocolate", "indigo"]
 
     function displayItems(pageNumber) {
         if (currPage != pageNumber) {
@@ -107,7 +107,7 @@ window.onload = function () {
             const numPagesBefore = Math.ceil((items.length - 1) / itemsPerPage);
             const numPagesAfter = Math.ceil(items.length / itemsPerPage);
             if (!currPage || numPagesAfter > numPagesBefore) {
-                currPage = numPagesAfter
+                currPage = Math.min(numPagesAfter, maxPages);
                 createPaginationButtons();
             }
             displayItems(numPagesAfter);
@@ -116,7 +116,6 @@ window.onload = function () {
 
           // Filter function
         document.getElementById('filter').addEventListener('input', function() {
-            console.log("test");
             const filterText = this.value.toLowerCase();
             const divs = document.getElementById('log').getElementsByTagName('div');
 
