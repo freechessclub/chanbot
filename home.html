@@ -53,7 +53,7 @@ window.onload = function () {
         const showPages = Math.min(numPages, maxPages);
         for (let i = 1; i <= showPages; i++) {
             const button = document.createElement('button');
-            if (i == currPage) {
+            if ((numPages - maxPages + i) == currPage) {
                 button.classList.add('active');
                 button.disabled = true;
             }
@@ -107,7 +107,7 @@ window.onload = function () {
             const numPagesBefore = Math.ceil((items.length - 1) / itemsPerPage);
             const numPagesAfter = Math.ceil(items.length / itemsPerPage);
             if (!currPage || numPagesAfter > numPagesBefore) {
-                currPage = Math.min(numPagesAfter, maxPages);
+                currPage = numPagesAfter;
                 createPaginationButtons();
             }
             displayItems(numPagesAfter);
