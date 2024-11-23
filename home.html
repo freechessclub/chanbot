@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex,nofollow">
 <title>Channel Log</title>
+<script src="https://cdn.jsdelivr.net/npm/autolink-js@1.0.2/autolink-min.min.js"></script>
 <script type="text/javascript">
 window.onload = function () {
     var items = [];
@@ -29,7 +30,15 @@ window.onload = function () {
         let i = startIndex;
         displayedItems.forEach(item => {
             const div = document.createElement('div');
-            div.textContent = item;
+            div.innerHTML = item.autoLink({
+                target: '_blank',
+                rel: 'nofollow',
+                callback: (url) => {
+                    return /\.(gif|png|jpe?g)$/i.test(url) ?
+                        '<a href="' + url + '" target="_blank" rel="nofollow"><img width="60" src="' + url + '"></a>'
+                        : null;
+                },
+            });
             div.style.color = colors[i%colors.length];
             i++;
             var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
