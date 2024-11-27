@@ -9,13 +9,41 @@
 <script type="text/javascript">
 window.onload = function () {
     var items = [];
+    var uniqueUsers = new Set(); // Track unique usernames
     const log = document.getElementById('log');
     const pagination = document.getElementById('pagination');
+    const userFilters = document.getElementById('user-filters');
     const status = document.getElementById('status');
     let itemsPerPage = calculateItemsPerPage();
     let currPage = 0;
     const maxPages = 5;
     var colors = ["black", "dimgray", "darkblue", "darkgreen", "brown", "chocolate", "indigo"]
+
+    // Helper function to extract username from a message
+    function extractUsername(message) {
+        const match = message.match(/\(\d+\)\s+([^:]+):/);
+        return match ? match[1] : null;
+    }
+
+    // Create checkboxes for filtering by users
+    function updateUserFilters() {
+        userFilters.innerHTML = '';
+        uniqueUsers.forEach(user => {
+            const label = document.createElement('label');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = true;
+            checkbox.value = user;
+
+            // Add event listener to reload the page's chat log when the checkbox is toggled
+            checkbox.addEventListener('change', () => {
+                displayItems(currPage); // Reload the current page
+            });
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(user));
+            userFilters.appendChild(label);
+        });
+    }
 
     function displayItems(pageNumber) {
         if (currPage != pageNumber) {
@@ -23,9 +51,17 @@ window.onload = function () {
         }
         log.innerHTML = '';
 
+        const selectedUsers = Array.from(userFilters.querySelectorAll('input:checked'))
+            .map(checkbox => checkbox.value);
+
         const startIndex = (pageNumber - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
-        const displayedItems = items.slice(startIndex, endIndex);
+
+        const displayedItems = items.slice(startIndex, endIndex)
+            .filter(item => {
+                const username = extractUsername(item);
+                return selectedUsers.includes(username);
+            });
 
         let i = startIndex;
         displayedItems.forEach(item => {
@@ -34,8 +70,8 @@ window.onload = function () {
                 target: '_blank',
                 rel: 'nofollow',
                 callback: (url) => {
-                    return /\.(gif|png|jpe?g)$/i.test(url) ?
-                        '<a href="' + url + '" target="_blank" rel="nofollow"><img width="60" src="' + url + '"></a>'
+                    return /\.(gif|png|jpe?g)$/i.test(url)
+                        ? `<a href="${url}" target="_blank" rel="nofollow"><img width="60" src="${url}"></a>`
                         : null;
                 },
             });
@@ -110,9 +146,13 @@ window.onload = function () {
             connClosed = false;
         };
         conn.onmessage = function (evt) {
-            var messages = evt.data.split('\n');
+            const messages = evt.data.split('\n');
             items = items.concat(messages);
-
+            messages.forEach(message => {
+                const username = extractUsername(message);
+                if (username) uniqueUsers.add(username);
+            });
+            updateUserFilters();
             const numPagesBefore = Math.ceil((items.length - 1) / itemsPerPage);
             const numPagesAfter = Math.ceil(items.length / itemsPerPage);
             if (!currPage || numPagesAfter > numPagesBefore) {
@@ -123,13 +163,13 @@ window.onload = function () {
             setTimeout(startCountdown, 1000);
         };
 
-          // Filter function
-        document.getElementById('filter').addEventListener('input', function() {
-            const filterText = this.value.toLowerCase();
+          // Search function
+        document.getElementById('search').addEventListener('input', function() {
+            const searchText = this.value.toLowerCase();
             const divs = document.getElementById('log').getElementsByTagName('div');
 
             Array.from(divs).forEach(div => {
-                if (div.textContent.toLowerCase().indexOf(filterText) > -1) {
+                if (div.textContent.toLowerCase().indexOf(searchText) > -1) {
                     div.classList.remove('hidden');
                 } else {
                     div.classList.add('hidden');
@@ -150,10 +190,12 @@ body {
     font-family: "Lexend", sans-serif;
     background: gray;
     height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
-
 #container {
-    position: relative;
+    display: flex;
+    flex-direction: column;
     height: 100%;
 }
 #status {
@@ -164,12 +206,10 @@ body {
     justify-content: space-between;
     align-items: center;
     background: lightgray;
-    padding: 5px;
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    right: 10px;
-    height: 20px;
+    padding: 5px 10px;
+    height: 40px;
+    flex-shrink: 0;
+    z-index: 2;
 }
 #status-bar label {
   margin-left: auto;
@@ -180,27 +220,30 @@ body {
   border: 1px solid #ccc;
   border-radius: 4px;
 }
+#content {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
+}
 #log {
+    flex: 1; /* Log takes up all available space */
     background: white;
     padding: 10px;
-    position: absolute;
-    top: 40px;
-    left: 10px;
-    right: 10px;
-    bottom: 40px;
-    overflow: auto;
+    overflow-y: auto;
+    box-sizing: border-box;
+    min-width: 0; /* Prevents content from forcing width changes */
 }
 #pagination {
-    position: absolute;
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    height: 20px;
+    height: 40px;
+    background: lightgray;
+    padding: 5px 10px;
     text-align: center;
+    flex-shrink: 0;
+    z-index: 1;
 }
 #pagination button {
-    margin: 0 5px;
-    padding: 5px 10px;
+    margin: 5px 5px;
+    padding: 10px 10px;
     background-color: #007bff;
     color: #fff;
     border: none;
@@ -214,6 +257,31 @@ body {
     background-color: #4CAF50;
     color: white;
 }
+#user-pane {
+    width: 200px;
+    background: #f8f9fa;
+    border-left: 1px solid #ccc;
+    overflow-y: scroll; /* Ensure consistent scrollbar behavior */
+    padding: 10px;
+    box-sizing: border-box;
+    flex-shrink: 0; /* Prevent shrinking */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #ccc #f8f9fa; /* Firefox scrollbar styling */
+}
+#user-pane::-webkit-scrollbar {
+    width: 8px; /* Chrome, Safari */
+}
+#user-pane::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+#user-pane::-webkit-scrollbar-track {
+    background: #f8f9fa;
+}
+#user-filters label {
+    display: block;
+    margin-bottom: 5px;
+}
 .hidden {
     display: none;
 }
@@ -226,10 +294,19 @@ body {
 <div id="container">
     <div id="status-bar">
         <div id="status"></div>
-        <label for="filter">Filter: </label>
-        <input type="text" id="filter">
+        <label for="search">Search: </label>
+        <input type="text" id="search">
     </div>
-    <div id="log"></div>
+    <!-- Main Content: Log and User Pane -->
+    <div id="content">
+        <div id="log"></div>
+        <div id="user-pane">
+            <div id="user-filters">
+                <!-- User checkboxes will be dynamically added here -->
+            </div>
+        </div>
+    </div>
+    <!-- Pagination -->
     <div id="pagination"></div>
 </div>
 </body>
