@@ -293,6 +293,9 @@ body {
 .hidden {
     display: none;
 }
+#menu-toggle {
+    display: none;
+}
 /* Responsive styles */
 @media (max-width: 768px) {
     #user-pane {
@@ -301,7 +304,7 @@ body {
         right: 0;
         top: 40px; /* Below the status-bar */
         height: calc(100% - 80px); /* Full height minus status and pagination */
-        width: 70%; /* Adjust width for mobile view */
+        width: 50%; /* Adjust width for mobile view */
         z-index: 10;
         background: #f8f9fa;
         border-left: 1px solid #ccc;
@@ -316,12 +319,9 @@ body {
         border: none;
         font-size: 24px;
         cursor: pointer;
-        padding: 0 10px;
+        padding: 5px;
+        color: #000; /* Ensure the icon is visible */
     }
-}
-/* Default: Hide burger menu on larger screens */
-#menu-toggle {
-    display: none;
 }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
