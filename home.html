@@ -180,6 +180,14 @@ window.onload = function () {
     } else {
         status.innerHTML = "Your browser does not support WebSockets.";
     }
+
+    // Toggle user-pane visibility on mobile
+    const menuToggle = document.getElementById('menu-toggle');
+    const userPane = document.getElementById('user-pane');
+    menuToggle.addEventListener('click', () => {
+        const isVisible = userPane.style.display === 'block';
+        userPane.style.display = isVisible ? 'none' : 'block';
+    });
 };
 
 </script>
@@ -285,6 +293,36 @@ body {
 .hidden {
     display: none;
 }
+/* Responsive styles */
+@media (max-width: 768px) {
+    #user-pane {
+        display: none; /* Hide user-pane by default */
+        position: absolute;
+        right: 0;
+        top: 40px; /* Below the status-bar */
+        height: calc(100% - 80px); /* Full height minus status and pagination */
+        width: 70%; /* Adjust width for mobile view */
+        z-index: 10;
+        background: #f8f9fa;
+        border-left: 1px solid #ccc;
+        overflow-y: auto;
+        padding: 10px;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    #menu-toggle {
+        display: inline-block; /* Show burger menu */
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0 10px;
+    }
+}
+/* Default: Hide burger menu on larger screens */
+#menu-toggle {
+    display: none;
+}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -296,6 +334,7 @@ body {
         <div id="status"></div>
         <label for="search">Search: </label>
         <input type="text" id="search">
+        <button id="menu-toggle" aria-label="Toggle User Pane">☰</button>
     </div>
     <!-- Main Content: Log and User Pane -->
     <div id="content">
