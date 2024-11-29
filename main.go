@@ -162,6 +162,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 func main() {
 	flag.Parse()
 	http.HandleFunc("/", serveHome)
+	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("./css"))))
 	http.HandleFunc("/ws", serveWs)
 	server := &http.Server{
 		Addr:              *addr,

@@ -1,0 +1,191 @@
+:root {
+    --bg-color: #ffffff;
+    --text-color: #000000;
+    --log-bg-color: #f9f9f9;
+    --status-bar-bg: #e0e0e0;
+    --user-pane-bg: #f1f1f1;
+    --pagination-bg: #e0e0e0;
+    --border-color: #cccccc;
+}
+
+body.dark {
+    --bg-color: #121212;
+    --text-color: #f9f9f9;
+    --log-bg-color: #1e1e1e;
+    --status-bar-bg: #2c2c2c;
+    --user-pane-bg: #1c1c1c;
+    --pagination-bg: #2c2c2c;
+    --border-color: #444444;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Lexend", sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#status {
+    font-weight: bold;
+}
+
+#status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--status-bar-bg);
+    padding: 5px 10px;
+    height: 40px;
+    flex-shrink: 0;
+    z-index: 2;
+    color: var(--text-color);
+    gap: 10px; /* Adds spacing between elements in the status bar */
+}
+
+#status-bar label {
+    margin-left: auto;
+    margin-right: 5px;
+}
+
+#status-bar input[type="text"] {
+    margin-right: auto; /* Pushes the toggle button to the right */
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#theme-toggle {
+    padding: 5px 10px;
+    border: none;
+    background: var(--log-bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+#content {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+#log {
+    flex-grow: 1;
+    background: var(--log-bg-color);
+    padding: 10px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    min-width: 0; /* Prevents content from forcing width changes */
+    color: var(--text-color);
+}
+
+#user-pane {
+    width: 200px;
+    background: var(--user-pane-bg);
+    border-left: 1px solid var(--border-color);
+    overflow-y: scroll; /* Ensure consistent scrollbar behavior */
+    padding: 10px;
+    box-sizing: border-box;
+    color: var(--text-color);
+    flex-shrink: 0; /* Prevent shrinking */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #ccc #f8f9fa; /* Firefox scrollbar styling */
+}
+
+#user-pane::-webkit-scrollbar {
+    width: 8px; /* Chrome, Safari */
+}
+
+#user-pane::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+
+#user-pane::-webkit-scrollbar-track {
+    background: #f8f9fa;
+}
+
+#user-filters label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+#pagination {
+    height: 40px;
+    background: var(--pagination-bg);
+    padding: 5px 10px;
+    text-align: center;
+    flex-shrink: 0;
+    z-index: 1;
+    color: var(--text-color);
+}
+
+#pagination button {
+    margin: 5px 5px;
+    padding: 10px 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+#pagination button:hover {
+    background-color: #0056b3;
+}
+
+#pagination button.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+#user-filters label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.hidden {
+    display: none;
+}
+
+#menu-toggle {
+    display: none;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    #user-pane {
+        display: none; /* Hide user-pane by default */
+        position: absolute;
+        right: 0;
+        top: 40px; /* Below the status-bar */
+        height: calc(100% - 80px); /* Full height minus status and pagination */
+        width: 50%; /* Adjust width for mobile view */
+        z-index: 10;
+        background: #f8f9fa;
+        border-left: 1px solid #ccc;
+        overflow-y: auto;
+        padding: 10px;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    #menu-toggle {
+        display: inline-block; /* Show burger menu */
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 5px;
+        color: #000; /* Ensure the icon is visible */
+    }
+}
