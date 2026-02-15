@@ -10,6 +10,7 @@
 window.onload = function () {
     var items = [];
     var uniqueUsers = new Set(); // Track unique usernames
+    var uniqueChannels = new Set(); // Track unique channels
     var userColors = {}; // Map users to colors
     const colors = [
         "#2B2D42", "#3D348B", "#6A0572", "#1B998B", "#E63946",
@@ -20,10 +21,20 @@ window.onload = function () {
     const log = document.getElementById('log');
     const pagination = document.getElementById('pagination');
     const userFilters = document.getElementById('user-filters');
+    const channelFilters = document.getElementById('channel-filters');
+    const userCount = document.getElementById('user-count');
+    const selectedCount = document.getElementById('selected-count');
+    const channelCount = document.getElementById('channel-count');
+    const selectedChannelCount = document.getElementById('selected-channel-count');
+    const selectAllBtn = document.getElementById('select-all-users');
+    const deselectAllBtn = document.getElementById('deselect-all-users');
+    const selectAllChannelsBtn = document.getElementById('select-all-channels');
+    const deselectAllChannelsBtn = document.getElementById('deselect-all-channels');
     const status = document.getElementById('status');
     let itemsPerPage = calculateItemsPerPage();
     let currPage = 0;
     const maxPages = 5;
+    let countdownTimer = null;
 
     function assignColorToUser(user) {
         if (!userColors[user]) {
@@ -39,8 +50,37 @@ window.onload = function () {
         return match ? match[1] : null;
     }
 
+    function extractChannel(message) {
+        const match = message.match(/^\(([^)]+)\)\s+/);
+        return match ? match[1] : null;
+    }
+
+    function escapeHtml(text) {
+        const span = document.createElement('span');
+        span.textContent = text;
+        return span.innerHTML;
+    }
+
+    function updateUserPaneMeta() {
+        const totalUsers = userFilters.querySelectorAll('input[type="checkbox"]').length;
+        const activeUsers = userFilters.querySelectorAll('input[type="checkbox"]:checked').length;
+        userCount.textContent = totalUsers;
+        selectedCount.textContent = activeUsers + " selected";
+    }
+
+    function updateChannelPaneMeta() {
+        const totalChannels = channelFilters.querySelectorAll('input[type="checkbox"]').length;
+        const activeChannels = channelFilters.querySelectorAll('input[type="checkbox"]:checked').length;
+        channelCount.textContent = totalChannels;
+        selectedChannelCount.textContent = activeChannels + " selected";
+    }
+
     // Create checkboxes for filtering by users
     function updateUserFilters() {
+        const hadExistingFilters = userFilters.querySelectorAll('input').length > 0;
+        const selectedUsers = new Set(
+            Array.from(userFilters.querySelectorAll('input:checked')).map(checkbox => checkbox.value)
+        );
         userFilters.innerHTML = '';
         const sortedUsers = Array.from(uniqueUsers).sort((a, b) => a.localeCompare(b));
         // Create checkboxes for each sorted user
@@ -49,11 +89,12 @@ window.onload = function () {
             const label = document.createElement('label');
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.checked = true;
+            checkbox.checked = hadExistingFilters ? selectedUsers.has(user) : true;
             checkbox.value = user;
 
             // Add event listener to reload the page's chat log when the checkbox is toggled
             checkbox.addEventListener('change', () => {
+                updateUserPaneMeta();
                 displayItems(currPage); // Reload the current page
             });
             // Display user name in their assigned color
@@ -62,6 +103,42 @@ window.onload = function () {
             label.appendChild(document.createTextNode(user));
             userFilters.appendChild(label);
         });
+        updateUserPaneMeta();
+    }
+
+    function updateChannelFilters() {
+        const hadExistingFilters = channelFilters.querySelectorAll('input').length > 0;
+        const selectedChannels = new Set(
+            Array.from(channelFilters.querySelectorAll('input:checked')).map(checkbox => checkbox.value)
+        );
+        channelFilters.innerHTML = '';
+        const sortedChannels = Array.from(uniqueChannels).sort((a, b) => {
+            const aNum = Number(a);
+            const bNum = Number(b);
+            if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+                return aNum - bNum;
+            }
+            return a.localeCompare(b);
+        });
+
+        sortedChannels.forEach(channel => {
+            const label = document.createElement('label');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = hadExistingFilters ? selectedChannels.has(channel) : true;
+            checkbox.value = channel;
+
+            checkbox.addEventListener('change', () => {
+                updateChannelPaneMeta();
+                displayItems(currPage);
+            });
+
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode("#" + channel));
+            channelFilters.appendChild(label);
+        });
+
+        updateChannelPaneMeta();
     }
 
     function displayItems(pageNumber) {
@@ -72,6 +149,24 @@ window.onload = function () {
 
         const selectedUsers = Array.from(userFilters.querySelectorAll('input:checked'))
             .map(checkbox => checkbox.value);
+        const selectedChannels = Array.from(channelFilters.querySelectorAll('input:checked'))
+            .map(checkbox => checkbox.value);
+
+        if (selectedUsers.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-state';
+            emptyState.textContent = 'No users selected. Choose 1+ users to view tells.';
+            log.appendChild(emptyState);
+            return;
+        }
+
+        if (selectedChannels.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-state';
+            emptyState.textContent = 'No channels selected. Choose 1+ channels to view tells.';
+            log.appendChild(emptyState);
+            return;
+        }
 
         const startIndex = (pageNumber - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -79,14 +174,17 @@ window.onload = function () {
         const displayedItems = items.slice(startIndex, endIndex)
             .filter(item => {
                 const username = extractUsername(item);
-                return selectedUsers.includes(username);
+                const channel = extractChannel(item);
+                return selectedUsers.includes(username) && selectedChannels.includes(channel);
             });
 
         displayedItems.forEach(item => {
             const username = extractUsername(item);
             const userColor = assignColorToUser(username);
             const div = document.createElement('div');
-            div.innerHTML = item.autoLink({
+            div.className = 'log-item';
+            const safeItem = escapeHtml(item);
+            div.innerHTML = safeItem.autoLink({
                 target: '_blank',
                 rel: 'nofollow',
                 callback: (url) => {
@@ -113,15 +211,17 @@ window.onload = function () {
 
     function createPaginationButtons() {
         pagination.innerHTML = '';
-        const numPages = Math.ceil(items.length / itemsPerPage)
+        const numPages = Math.ceil(items.length / itemsPerPage);
         const showPages = Math.min(numPages, maxPages);
+        const startPage = Math.max(1, numPages - showPages + 1);
         for (let i = 1; i <= showPages; i++) {
+            const pageNumber = startPage + i - 1;
             const button = document.createElement('button');
-            if ((numPages - maxPages + i) == currPage) {
+            if (pageNumber === currPage) {
                 button.classList.add('active');
                 button.disabled = true;
             }
-            button.textContent = i;
+            button.textContent = pageNumber;
             button.addEventListener('click', function () {
                 const buttons = pagination.querySelectorAll('button');
                 buttons.forEach(btn => {
@@ -131,7 +231,7 @@ window.onload = function () {
 
                 button.classList.add('active');
                 button.disabled = true;
-                currPage = (numPages - maxPages + i);
+                currPage = pageNumber;
                 displayItems(currPage);
             });
             pagination.appendChild(button);
@@ -142,36 +242,54 @@ window.onload = function () {
         var connClosed = false;
 
         function startCountdown() {
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+            }
             let count = 5;
-            const countdown = setInterval(() => {
+            status.textContent = "Reloading in " + count + " seconds...";
+            countdownTimer = setInterval(() => {
                 if (connClosed) {
-                    clearInterval(countdown);
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
                     return;
                 }
                 count--;
                 status.textContent = "Reloading in " + count + " seconds...";
 
                 if (count <= 0) {
-                    clearInterval(countdown);
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
                     status.textContent = '';
                 }
             }, 1000);
         }
         startCountdown();
 
-        var conn = new WebSocket("wss://" + document.location.host + "/ws");
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        var conn = new WebSocket(wsProtocol + document.location.host + "/ws");
         conn.onclose = function (evt) {
+            connClosed = true;
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
             status.innerHTML = "Connection closed.";
-            connClosed = false;
         };
         conn.onmessage = function (evt) {
-            const messages = evt.data.split('\n');
+            connClosed = false;
+            const messages = evt.data.split('\n').filter(message => message.trim() !== '');
+            if (messages.length === 0) {
+                return;
+            }
             items = items.concat(messages);
             messages.forEach(message => {
+                const channel = extractChannel(message);
                 const username = extractUsername(message);
+                if (channel) uniqueChannels.add(channel);
                 if (username) uniqueUsers.add(username);
             });
             updateUserFilters();
+            updateChannelFilters();
             const numPagesBefore = Math.ceil((items.length - 1) / itemsPerPage);
             const numPagesAfter = Math.ceil(items.length / itemsPerPage);
             if (!currPage || numPagesAfter > numPagesBefore) {
@@ -179,7 +297,7 @@ window.onload = function () {
                 createPaginationButtons();
             }
             displayItems(numPagesAfter);
-            setTimeout(startCountdown, 1000);
+            startCountdown();
         };
 
           // Search function
@@ -206,6 +324,42 @@ window.onload = function () {
     menuToggle.addEventListener('click', () => {
         const isVisible = userPane.style.display === 'block';
         userPane.style.display = isVisible ? 'none' : 'block';
+    });
+
+    selectAllBtn.addEventListener('click', () => {
+        const checkboxes = userFilters.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        updateUserPaneMeta();
+        displayItems(currPage);
+    });
+
+    deselectAllBtn.addEventListener('click', () => {
+        const checkboxes = userFilters.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateUserPaneMeta();
+        displayItems(currPage);
+    });
+
+    selectAllChannelsBtn.addEventListener('click', () => {
+        const checkboxes = channelFilters.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        updateChannelPaneMeta();
+        displayItems(currPage);
+    });
+
+    deselectAllChannelsBtn.addEventListener('click', () => {
+        const checkboxes = channelFilters.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateChannelPaneMeta();
+        displayItems(currPage);
     });
 
     // Theme toggle functionality
@@ -236,8 +390,29 @@ window.onload = function () {
     <div id="content">
         <div id="log"></div>
         <div id="user-pane">
-            <div id="user-filters">
-                <!-- User checkboxes will be dynamically added here -->
+            <div class="filter-section">
+                <div class="filter-section-header">
+                    <div class="filter-section-title">Channels (<span id="channel-count">0</span>)</div>
+                    <div id="selected-channel-count">0 selected</div>
+                </div>
+                <div class="filter-actions">
+                    <button id="select-all-channels" type="button">Select all</button>
+                    <button id="deselect-all-channels" type="button">Deselect all</button>
+                </div>
+                <div id="channel-filters"></div>
+            </div>
+            <div class="filter-section">
+                <div class="filter-section-header">
+                    <div class="filter-section-title">Users (<span id="user-count">0</span>)</div>
+                    <div id="selected-count">0 selected</div>
+                </div>
+                <div class="filter-actions">
+                    <button id="select-all-users" type="button">Select all</button>
+                    <button id="deselect-all-users" type="button">Deselect all</button>
+                </div>
+                <div id="user-filters">
+                    <!-- User checkboxes will be dynamically added here -->
+                </div>
             </div>
         </div>
     </div>
