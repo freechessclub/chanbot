@@ -71,6 +71,8 @@ body {
     min-width: 200px;
     flex: 0 1 clamp(220px, 28vw, 360px);
     width: 100%;
+    margin-left: auto;
+    margin-right: auto;
     padding: 6px 8px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
@@ -92,10 +94,6 @@ body {
     cursor: pointer;
     border-radius: 4px;
     transition: background 0.2s ease, transform 0.2s ease;
-}
-
-#theme-toggle {
-    margin-left: auto;
 }
 
 #theme-toggle:hover,
