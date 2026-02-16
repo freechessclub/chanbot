@@ -68,11 +68,15 @@ body {
     opacity: 0.9;
 }
 
+#status-bar label[for="search"] {
+    margin-left: auto;
+    margin-right: 4px;
+}
+
 #status-bar input[type="text"] {
     min-width: 200px;
     flex: 0 1 clamp(220px, 28vw, 360px);
     width: 100%;
-    margin-left: auto;
     margin-right: auto;
     padding: 6px 8px;
     border: 1px solid var(--border-color);
@@ -346,6 +350,11 @@ body.layout-ultra-dense .log-item {
     }
 
     #status-bar label {
+        margin-right: 0;
+    }
+
+    #status-bar label[for="search"] {
+        margin-left: 0;
         margin-right: 0;
     }
 
