@@ -11,12 +11,18 @@ window.onload = function () {
     var items = [];
     var uniqueUsers = new Set(); // Track unique usernames
     var uniqueChannels = new Set(); // Track unique channels
-    var userColors = {}; // Map users to colors
-    const colors = [
+    var userColorIndices = {}; // Map users to stable color indices
+    const lightModeColors = [
         "#2B2D42", "#3D348B", "#6A0572", "#1B998B", "#E63946",
         "#8D8741", "#E3963E", "#457B9D", "#2A9D8F", "#4A4E69",
         "#5A189A", "#9D0208", "#283618", "#6B4226", "#3C1642",
         "#264653", "#7A4E4E", "#2C3E50", "#8F2D56", "#512D6D"
+    ];
+    const darkModeColors = [
+        "#9FD3FF", "#C2A3FF", "#F7B5FF", "#6FE7D2", "#FF9CA8",
+        "#FFE08A", "#FFD29D", "#9AC4FF", "#8EE5C8", "#C9C9FF",
+        "#D5A6FF", "#FFA6A6", "#BEE7A3", "#E7C3A3", "#D7B8FF",
+        "#A9E3E8", "#E7B8C8", "#B8D5FF", "#F3B3D4", "#C9B0FF"
     ];
     const log = document.getElementById('log');
     const pagination = document.getElementById('pagination');
@@ -36,12 +42,16 @@ window.onload = function () {
     const maxPages = 5;
     let countdownTimer = null;
 
+    function getUserColorPalette() {
+        return document.body.classList.contains('dark') ? darkModeColors : lightModeColors;
+    }
+
     function assignColorToUser(user) {
-        if (!userColors[user]) {
-            const colorIndex = Object.keys(userColors).length % colors.length;
-            userColors[user] = colors[colorIndex]; // Assign next available color
+        if (userColorIndices[user] === undefined) {
+            userColorIndices[user] = Object.keys(userColorIndices).length;
         }
-        return userColors[user];
+        const palette = getUserColorPalette();
+        return palette[userColorIndices[user] % palette.length];
     }
 
     // Helper function to extract username from a message
@@ -75,6 +85,25 @@ window.onload = function () {
         selectedChannelCount.textContent = activeChannels + " selected";
     }
 
+    function getSelectedFilterValues(filterContainer) {
+        return Array.from(filterContainer.querySelectorAll('input:checked'))
+            .map(checkbox => checkbox.value);
+    }
+
+    function getFilteredItems(selectedUsers, selectedChannels) {
+        const selectedUserSet = new Set(selectedUsers);
+        const selectedChannelSet = new Set(selectedChannels);
+        return items.filter(item => {
+            const username = extractUsername(item);
+            const channel = extractChannel(item);
+            return selectedUserSet.has(username) && selectedChannelSet.has(channel);
+        });
+    }
+
+    function getTotalPages(itemCount) {
+        return Math.max(1, Math.ceil(itemCount / itemsPerPage));
+    }
+
     // Create checkboxes for filtering by users
     function updateUserFilters() {
         const hadExistingFilters = userFilters.querySelectorAll('input').length > 0;
@@ -98,7 +127,7 @@ window.onload = function () {
                 displayItems(currPage); // Reload the current page
             });
             // Display user name in their assigned color
-            label.style.color = userColors[user];
+            label.style.color = assignColorToUser(user);
             label.appendChild(checkbox);
             label.appendChild(document.createTextNode(user));
             userFilters.appendChild(label);
@@ -134,7 +163,7 @@ window.onload = function () {
             });
 
             label.appendChild(checkbox);
-            label.appendChild(document.createTextNode("#" + channel));
+            label.appendChild(document.createTextNode(channel));
             channelFilters.appendChild(label);
         });
 
@@ -147,12 +176,11 @@ window.onload = function () {
         }
         log.innerHTML = '';
 
-        const selectedUsers = Array.from(userFilters.querySelectorAll('input:checked'))
-            .map(checkbox => checkbox.value);
-        const selectedChannels = Array.from(channelFilters.querySelectorAll('input:checked'))
-            .map(checkbox => checkbox.value);
+        const selectedUsers = getSelectedFilterValues(userFilters);
+        const selectedChannels = getSelectedFilterValues(channelFilters);
 
         if (selectedUsers.length === 0) {
+            createPaginationButtons(1);
             const emptyState = document.createElement('div');
             emptyState.className = 'empty-state';
             emptyState.textContent = 'No users selected. Choose 1+ users to view tells.';
@@ -161,6 +189,7 @@ window.onload = function () {
         }
 
         if (selectedChannels.length === 0) {
+            createPaginationButtons(1);
             const emptyState = document.createElement('div');
             emptyState.className = 'empty-state';
             emptyState.textContent = 'No channels selected. Choose 1+ channels to view tells.';
@@ -168,15 +197,27 @@ window.onload = function () {
             return;
         }
 
-        const startIndex = (pageNumber - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
+        const filteredItems = getFilteredItems(selectedUsers, selectedChannels);
+        const totalPages = getTotalPages(filteredItems.length);
+        const safePage = Math.min(Math.max(1, pageNumber || 1), totalPages);
 
-        const displayedItems = items.slice(startIndex, endIndex)
-            .filter(item => {
-                const username = extractUsername(item);
-                const channel = extractChannel(item);
-                return selectedUsers.includes(username) && selectedChannels.includes(channel);
-            });
+        if (safePage !== currPage) {
+            currPage = safePage;
+        }
+
+        createPaginationButtons(totalPages);
+
+        if (filteredItems.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-state';
+            emptyState.textContent = 'No tells match the current user/channel filters.';
+            log.appendChild(emptyState);
+            return;
+        }
+
+        const startIndex = (currPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const displayedItems = filteredItems.slice(startIndex, endIndex);
 
         displayedItems.forEach(item => {
             const username = extractUsername(item);
@@ -209,13 +250,44 @@ window.onload = function () {
         return itemsPerPage;
     }
 
-    function createPaginationButtons() {
+    function createPaginationButtons(totalPages) {
         pagination.innerHTML = '';
-        const numPages = Math.ceil(items.length / itemsPerPage);
-        const showPages = Math.min(numPages, maxPages);
-        const startPage = Math.max(1, numPages - showPages + 1);
-        for (let i = 1; i <= showPages; i++) {
-            const pageNumber = startPage + i - 1;
+        currPage = Math.min(Math.max(1, currPage || 1), totalPages);
+
+        const prevButton = document.createElement('button');
+        prevButton.textContent = 'Prev';
+        prevButton.disabled = currPage <= 1;
+        prevButton.addEventListener('click', function () {
+            if (currPage > 1) {
+                currPage--;
+                displayItems(currPage);
+            }
+        });
+        pagination.appendChild(prevButton);
+
+        const showPages = Math.min(totalPages, maxPages);
+        const halfWindow = Math.floor(showPages / 2);
+        let startPage = Math.max(1, currPage - halfWindow);
+        let endPage = Math.min(totalPages, startPage + showPages - 1);
+        startPage = Math.max(1, endPage - showPages + 1);
+
+        if (startPage > 1) {
+            const firstButton = document.createElement('button');
+            firstButton.textContent = '1';
+            firstButton.addEventListener('click', function () {
+                currPage = 1;
+                displayItems(currPage);
+            });
+            pagination.appendChild(firstButton);
+
+            if (startPage > 2) {
+                const ellipsis = document.createElement('span');
+                ellipsis.textContent = ' … ';
+                pagination.appendChild(ellipsis);
+            }
+        }
+
+        for (let pageNumber = startPage; pageNumber <= endPage; pageNumber++) {
             const button = document.createElement('button');
             if (pageNumber === currPage) {
                 button.classList.add('active');
@@ -223,19 +295,43 @@ window.onload = function () {
             }
             button.textContent = pageNumber;
             button.addEventListener('click', function () {
-                const buttons = pagination.querySelectorAll('button');
-                buttons.forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.disabled = false;
-                });
-
-                button.classList.add('active');
-                button.disabled = true;
                 currPage = pageNumber;
                 displayItems(currPage);
             });
             pagination.appendChild(button);
         }
+
+        const pageInfo = document.createElement('span');
+        pageInfo.className = 'pagination-info';
+        pageInfo.textContent = 'Page ' + currPage + ' of ' + totalPages;
+        pagination.appendChild(pageInfo);
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const ellipsis = document.createElement('span');
+                ellipsis.textContent = ' … ';
+                pagination.appendChild(ellipsis);
+            }
+
+            const lastButton = document.createElement('button');
+            lastButton.textContent = totalPages;
+            lastButton.addEventListener('click', function () {
+                currPage = totalPages;
+                displayItems(currPage);
+            });
+            pagination.appendChild(lastButton);
+        }
+
+        const nextButton = document.createElement('button');
+        nextButton.textContent = 'Next';
+        nextButton.disabled = currPage >= totalPages;
+        nextButton.addEventListener('click', function () {
+            if (currPage < totalPages) {
+                currPage++;
+                displayItems(currPage);
+            }
+        });
+        pagination.appendChild(nextButton);
     }
 
     if (window["WebSocket"]) {
@@ -281,6 +377,11 @@ window.onload = function () {
             if (messages.length === 0) {
                 return;
             }
+
+            const selectedUsersBefore = getSelectedFilterValues(userFilters);
+            const selectedChannelsBefore = getSelectedFilterValues(channelFilters);
+            const prevTotalPages = getTotalPages(getFilteredItems(selectedUsersBefore, selectedChannelsBefore).length);
+
             items = items.concat(messages);
             messages.forEach(message => {
                 const channel = extractChannel(message);
@@ -290,13 +391,18 @@ window.onload = function () {
             });
             updateUserFilters();
             updateChannelFilters();
-            const numPagesBefore = Math.ceil((items.length - 1) / itemsPerPage);
-            const numPagesAfter = Math.ceil(items.length / itemsPerPage);
-            if (!currPage || numPagesAfter > numPagesBefore) {
-                currPage = numPagesAfter;
-                createPaginationButtons();
+
+            const selectedUsersAfter = getSelectedFilterValues(userFilters);
+            const selectedChannelsAfter = getSelectedFilterValues(channelFilters);
+            const nextTotalPages = getTotalPages(getFilteredItems(selectedUsersAfter, selectedChannelsAfter).length);
+
+            if (!currPage || currPage === prevTotalPages) {
+                currPage = nextTotalPages;
+            } else {
+                currPage = Math.min(currPage, nextTotalPages);
             }
-            displayItems(numPagesAfter);
+
+            displayItems(currPage);
             startCountdown();
         };
 
@@ -368,6 +474,8 @@ window.onload = function () {
         document.body.classList.toggle('dark');
         const isDark = document.body.classList.contains('dark');
         themeToggle.textContent = isDark ? '☀️' : '🌙';
+        updateUserFilters();
+        displayItems(currPage);
     });
 };
 

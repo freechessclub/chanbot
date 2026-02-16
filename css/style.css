@@ -258,6 +258,12 @@ body {
     color: white;
 }
 
+.pagination-info {
+    margin: 0 8px;
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
 .hidden {
     display: none;
 }
