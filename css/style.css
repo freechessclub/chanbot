@@ -69,8 +69,8 @@ body {
 
 #status-bar input[type="text"] {
     min-width: 220px;
-    flex: 1 1 560px;
-    max-width: 700px;
+    flex: 0 1 clamp(320px, 42vw, 520px);
+    width: 100%;
     padding: 8px 10px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
