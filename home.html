@@ -37,11 +37,22 @@ window.onload = function () {
     const deselectAllBtn = document.getElementById('deselect-all-users');
     const selectAllChannelsBtn = document.getElementById('select-all-channels');
     const deselectAllChannelsBtn = document.getElementById('deselect-all-channels');
+    const settingsToggle = document.getElementById('settings-toggle');
+    const settingsPanel = document.getElementById('settings-panel');
+    const textLayoutInputs = document.querySelectorAll('input[name="text-layout"]');
+    const autoConnectToggle = document.getElementById('auto-connect-toggle');
     const status = document.getElementById('status');
+    const TEXT_LAYOUT_STORAGE_KEY = 'chanbot-text-layout';
+    const USER_FILTERS_STORAGE_KEY = 'chanbot-selected-users';
+    const CHANNEL_FILTERS_STORAGE_KEY = 'chanbot-selected-channels';
+    const AUTOCONNECT_STORAGE_KEY = 'chanbot-auto-connect';
     let itemsPerPage = calculateItemsPerPage();
     let currPage = 0;
     const maxPages = 5;
     let countdownTimer = null;
+    let conn = null;
+    let connClosed = true;
+    let autoConnectEnabled = true;
 
     function getUserColorPalette() {
         return document.body.classList.contains('dark') ? darkModeColors : lightModeColors;
@@ -91,6 +102,38 @@ window.onload = function () {
             .map(checkbox => checkbox.value);
     }
 
+    function getStoredSelection(storageKey) {
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw === null) {
+                return null;
+            }
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                return null;
+            }
+            return new Set(parsed.map(String));
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function persistFilterSelection(storageKey, values) {
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(values));
+        } catch (error) {
+            // Ignore storage write errors.
+        }
+    }
+
+    function persistUserSelections() {
+        persistFilterSelection(USER_FILTERS_STORAGE_KEY, getSelectedFilterValues(userFilters));
+    }
+
+    function persistChannelSelections() {
+        persistFilterSelection(CHANNEL_FILTERS_STORAGE_KEY, getSelectedFilterValues(channelFilters));
+    }
+
     function getFilteredItems(selectedUsers, selectedChannels) {
         const selectedUserSet = new Set(selectedUsers);
         const selectedChannelSet = new Set(selectedChannels);
@@ -105,9 +148,129 @@ window.onload = function () {
         return Math.max(1, Math.ceil(itemCount / itemsPerPage));
     }
 
+    function applyTextLayout(layoutMode) {
+        const resolvedLayout = layoutMode === 'ultra-dense'
+            ? 'ultra-dense'
+            : (layoutMode === 'dense' ? 'dense' : 'cozy');
+        document.body.classList.toggle('layout-dense', resolvedLayout === 'dense');
+        document.body.classList.toggle('layout-ultra-dense', resolvedLayout === 'ultra-dense');
+        document.body.classList.toggle('layout-cozy', resolvedLayout === 'cozy');
+        textLayoutInputs.forEach(input => {
+            input.checked = input.value === resolvedLayout;
+        });
+        localStorage.setItem(TEXT_LAYOUT_STORAGE_KEY, resolvedLayout);
+    }
+
+    function getStoredAutoConnect() {
+        try {
+            const raw = localStorage.getItem(AUTOCONNECT_STORAGE_KEY);
+            if (raw === null) {
+                return true;
+            }
+            return raw === 'true';
+        } catch (error) {
+            return true;
+        }
+    }
+
+    function persistAutoConnect(enabled) {
+        try {
+            localStorage.setItem(AUTOCONNECT_STORAGE_KEY, enabled ? 'true' : 'false');
+        } catch (error) {
+            // Ignore storage write errors.
+        }
+    }
+
+    function stopCountdown() {
+        if (countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+        }
+    }
+
+    function startCountdown() {
+        stopCountdown();
+        let count = 5;
+        status.textContent = "Reloading in " + count + " seconds...";
+        countdownTimer = setInterval(() => {
+            if (connClosed) {
+                stopCountdown();
+                return;
+            }
+            count--;
+            status.textContent = "Reloading in " + count + " seconds...";
+
+            if (count <= 0) {
+                stopCountdown();
+                status.textContent = '';
+            }
+        }, 1000);
+    }
+
+    function connectWebSocket() {
+        if (!window["WebSocket"]) {
+            status.innerHTML = "Your browser does not support WebSockets.";
+            return;
+        }
+
+        if (conn && (conn.readyState === WebSocket.OPEN || conn.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        connClosed = false;
+        conn = new WebSocket(wsProtocol + document.location.host + "/ws");
+
+        conn.onclose = function () {
+            connClosed = true;
+            stopCountdown();
+            status.innerHTML = autoConnectEnabled
+                ? "Connection closed."
+                : "Auto-connect is off.";
+        };
+
+        conn.onmessage = function (evt) {
+            connClosed = false;
+            const messages = evt.data.split('\n').filter(message => message.trim() !== '');
+            if (messages.length === 0) {
+                return;
+            }
+
+            const selectedUsersBefore = getSelectedFilterValues(userFilters);
+            const selectedChannelsBefore = getSelectedFilterValues(channelFilters);
+            const prevTotalPages = getTotalPages(getFilteredItems(selectedUsersBefore, selectedChannelsBefore).length);
+
+            items = items.concat(messages);
+            messages.forEach(message => {
+                const channel = extractChannel(message);
+                const username = extractUsername(message);
+                if (channel) uniqueChannels.add(channel);
+                if (username) uniqueUsers.add(username);
+            });
+            updateUserFilters();
+            updateChannelFilters();
+
+            const selectedUsersAfter = getSelectedFilterValues(userFilters);
+            const selectedChannelsAfter = getSelectedFilterValues(channelFilters);
+            const nextTotalPages = getTotalPages(getFilteredItems(selectedUsersAfter, selectedChannelsAfter).length);
+
+            if (!currPage || currPage === prevTotalPages) {
+                currPage = nextTotalPages;
+            } else {
+                currPage = Math.min(currPage, nextTotalPages);
+            }
+
+            displayItems(currPage);
+            startCountdown();
+        };
+
+        startCountdown();
+    }
+
     // Create checkboxes for filtering by users
     function updateUserFilters() {
         const hadExistingFilters = userFilters.querySelectorAll('input').length > 0;
+        const storedUsers = getStoredSelection(USER_FILTERS_STORAGE_KEY);
         const selectedUsers = new Set(
             Array.from(userFilters.querySelectorAll('input:checked')).map(checkbox => checkbox.value)
         );
@@ -119,12 +282,19 @@ window.onload = function () {
             const label = document.createElement('label');
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.checked = hadExistingFilters ? selectedUsers.has(user) : true;
+            if (hadExistingFilters) {
+                checkbox.checked = selectedUsers.has(user);
+            } else if (storedUsers !== null) {
+                checkbox.checked = storedUsers.has(user);
+            } else {
+                checkbox.checked = true;
+            }
             checkbox.value = user;
 
             // Add event listener to reload the page's chat log when the checkbox is toggled
             checkbox.addEventListener('change', () => {
                 updateUserPaneMeta();
+                persistUserSelections();
                 displayItems(currPage); // Reload the current page
             });
             // Display user name in their assigned color
@@ -138,6 +308,7 @@ window.onload = function () {
 
     function updateChannelFilters() {
         const hadExistingFilters = channelFilters.querySelectorAll('input').length > 0;
+        const storedChannels = getStoredSelection(CHANNEL_FILTERS_STORAGE_KEY);
         const selectedChannels = new Set(
             Array.from(channelFilters.querySelectorAll('input:checked')).map(checkbox => checkbox.value)
         );
@@ -155,11 +326,18 @@ window.onload = function () {
             const label = document.createElement('label');
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.checked = hadExistingFilters ? selectedChannels.has(channel) : true;
+            if (hadExistingFilters) {
+                checkbox.checked = selectedChannels.has(channel);
+            } else if (storedChannels !== null) {
+                checkbox.checked = storedChannels.has(channel);
+            } else {
+                checkbox.checked = true;
+            }
             checkbox.value = channel;
 
             checkbox.addEventListener('change', () => {
                 updateChannelPaneMeta();
+                persistChannelSelections();
                 displayItems(currPage);
             });
 
@@ -337,78 +515,15 @@ window.onload = function () {
         pagination.appendChild(nextButton);
     }
 
+    autoConnectEnabled = getStoredAutoConnect();
+    autoConnectToggle.checked = autoConnectEnabled;
+
     if (window["WebSocket"]) {
-        var connClosed = false;
-
-        function startCountdown() {
-            if (countdownTimer) {
-                clearInterval(countdownTimer);
-            }
-            let count = 5;
-            status.textContent = "Reloading in " + count + " seconds...";
-            countdownTimer = setInterval(() => {
-                if (connClosed) {
-                    clearInterval(countdownTimer);
-                    countdownTimer = null;
-                    return;
-                }
-                count--;
-                status.textContent = "Reloading in " + count + " seconds...";
-
-                if (count <= 0) {
-                    clearInterval(countdownTimer);
-                    countdownTimer = null;
-                    status.textContent = '';
-                }
-            }, 1000);
+        if (autoConnectEnabled) {
+            connectWebSocket();
+        } else {
+            status.textContent = "Auto-connect is off.";
         }
-        startCountdown();
-
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-        var conn = new WebSocket(wsProtocol + document.location.host + "/ws");
-        conn.onclose = function (evt) {
-            connClosed = true;
-            if (countdownTimer) {
-                clearInterval(countdownTimer);
-                countdownTimer = null;
-            }
-            status.innerHTML = "Connection closed.";
-        };
-        conn.onmessage = function (evt) {
-            connClosed = false;
-            const messages = evt.data.split('\n').filter(message => message.trim() !== '');
-            if (messages.length === 0) {
-                return;
-            }
-
-            const selectedUsersBefore = getSelectedFilterValues(userFilters);
-            const selectedChannelsBefore = getSelectedFilterValues(channelFilters);
-            const prevTotalPages = getTotalPages(getFilteredItems(selectedUsersBefore, selectedChannelsBefore).length);
-
-            items = items.concat(messages);
-            messages.forEach(message => {
-                const channel = extractChannel(message);
-                const username = extractUsername(message);
-                if (channel) uniqueChannels.add(channel);
-                if (username) uniqueUsers.add(username);
-            });
-            updateUserFilters();
-            updateChannelFilters();
-
-            const selectedUsersAfter = getSelectedFilterValues(userFilters);
-            const selectedChannelsAfter = getSelectedFilterValues(channelFilters);
-            const nextTotalPages = getTotalPages(getFilteredItems(selectedUsersAfter, selectedChannelsAfter).length);
-
-            if (!currPage || currPage === prevTotalPages) {
-                currPage = nextTotalPages;
-            } else {
-                currPage = Math.min(currPage, nextTotalPages);
-            }
-
-            displayItems(currPage);
-            startCountdown();
-        };
-
     } else {
         status.innerHTML = "Your browser does not support WebSockets.";
     }
@@ -432,6 +547,7 @@ window.onload = function () {
             checkbox.checked = true;
         });
         updateUserPaneMeta();
+        persistUserSelections();
         displayItems(currPage);
     });
 
@@ -441,6 +557,7 @@ window.onload = function () {
             checkbox.checked = false;
         });
         updateUserPaneMeta();
+        persistUserSelections();
         displayItems(currPage);
     });
 
@@ -450,6 +567,7 @@ window.onload = function () {
             checkbox.checked = true;
         });
         updateChannelPaneMeta();
+        persistChannelSelections();
         displayItems(currPage);
     });
 
@@ -459,8 +577,54 @@ window.onload = function () {
             checkbox.checked = false;
         });
         updateChannelPaneMeta();
+        persistChannelSelections();
         displayItems(currPage);
     });
+
+    settingsToggle.addEventListener('click', (event) => {
+        event.stopPropagation();
+        settingsPanel.classList.toggle('hidden');
+    });
+
+    settingsPanel.addEventListener('click', (event) => {
+        event.stopPropagation();
+    });
+
+    textLayoutInputs.forEach(input => {
+        input.addEventListener('change', () => {
+            if (!input.checked) {
+                return;
+            }
+            applyTextLayout(input.value);
+            if (currPage) {
+                displayItems(currPage);
+            }
+            settingsPanel.classList.add('hidden');
+        });
+    });
+
+    autoConnectToggle.addEventListener('change', () => {
+        autoConnectEnabled = autoConnectToggle.checked;
+        persistAutoConnect(autoConnectEnabled);
+
+        if (autoConnectEnabled) {
+            connectWebSocket();
+        } else {
+            connClosed = true;
+            if (conn && (conn.readyState === WebSocket.OPEN || conn.readyState === WebSocket.CONNECTING)) {
+                conn.close();
+            }
+            stopCountdown();
+            status.textContent = "Auto-connect is off.";
+        }
+        settingsPanel.classList.add('hidden');
+    });
+
+    document.addEventListener('click', () => {
+        settingsPanel.classList.add('hidden');
+    });
+
+    applyTextLayout(localStorage.getItem(TEXT_LAYOUT_STORAGE_KEY));
 
     // Theme toggle functionality
     const themeToggle = document.getElementById('theme-toggle');
@@ -486,7 +650,16 @@ window.onload = function () {
         <label for="search">Search: </label>
         <input type="text" id="search">
         <button id="theme-toggle" aria-label="Toggle Theme">🌙</button>
+        <button id="settings-toggle" aria-label="Open Layout Settings">⚙️</button>
         <button id="menu-toggle" aria-label="Toggle User Pane">☰</button>
+        <div id="settings-panel" class="hidden" role="dialog" aria-label="Layout Settings">
+            <div class="settings-title">Text layout</div>
+            <label><input type="radio" name="text-layout" value="cozy" checked> Cozy</label>
+            <label><input type="radio" name="text-layout" value="dense"> Dense</label>
+            <label><input type="radio" name="text-layout" value="ultra-dense"> Ultra Dense</label>
+            <div class="settings-title">Connection</div>
+            <label><input type="checkbox" id="auto-connect-toggle"> Auto-connect</label>
+        </div>
     </div>
     <!-- Main Content: Log and User Pane -->
     <div id="content">
