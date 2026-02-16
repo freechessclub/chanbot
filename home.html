@@ -26,6 +26,7 @@ window.onload = function () {
     ];
     const log = document.getElementById('log');
     const pagination = document.getElementById('pagination');
+    const searchInput = document.getElementById('search');
     const userFilters = document.getElementById('user-filters');
     const channelFilters = document.getElementById('channel-filters');
     const userCount = document.getElementById('user-count');
@@ -178,6 +179,7 @@ window.onload = function () {
 
         const selectedUsers = getSelectedFilterValues(userFilters);
         const selectedChannels = getSelectedFilterValues(channelFilters);
+        const searchText = searchInput.value.trim().toLowerCase();
 
         if (selectedUsers.length === 0) {
             createPaginationButtons(1);
@@ -197,7 +199,8 @@ window.onload = function () {
             return;
         }
 
-        const filteredItems = getFilteredItems(selectedUsers, selectedChannels);
+        const filteredItems = getFilteredItems(selectedUsers, selectedChannels)
+            .filter(item => item.toLowerCase().includes(searchText));
         const totalPages = getTotalPages(filteredItems.length);
         const safePage = Math.min(Math.max(1, pageNumber || 1), totalPages);
 
@@ -406,23 +409,14 @@ window.onload = function () {
             startCountdown();
         };
 
-          // Search function
-        document.getElementById('search').addEventListener('input', function() {
-            const searchText = this.value.toLowerCase();
-            const divs = document.getElementById('log').getElementsByTagName('div');
-
-            Array.from(divs).forEach(div => {
-                if (div.textContent.toLowerCase().indexOf(searchText) > -1) {
-                    div.classList.remove('hidden');
-                } else {
-                    div.classList.add('hidden');
-                }
-            });
-        });
-
     } else {
         status.innerHTML = "Your browser does not support WebSockets.";
     }
+
+    searchInput.addEventListener('input', function () {
+        currPage = 1;
+        displayItems(currPage);
+    });
 
     // Toggle user-pane visibility on mobile
     const menuToggle = document.getElementById('menu-toggle');
