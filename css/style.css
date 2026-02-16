@@ -46,7 +46,7 @@ body {
 
 #status {
     font-weight: bold;
-    min-width: 140px;
+    min-width: 120px;
 }
 
 #status-bar {
@@ -54,11 +54,11 @@ body {
     align-items: center;
     flex-wrap: wrap;
     background: var(--status-bar-bg);
-    padding: 10px 12px;
+    padding: 8px 10px;
     flex-shrink: 0;
     z-index: 2;
     color: var(--text-color);
-    gap: 10px;
+    gap: 8px;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -68,10 +68,10 @@ body {
 }
 
 #status-bar input[type="text"] {
-    min-width: 220px;
-    flex: 0 1 clamp(320px, 42vw, 520px);
+    min-width: 200px;
+    flex: 0 1 clamp(220px, 28vw, 360px);
     width: 100%;
-    padding: 8px 10px;
+    padding: 6px 8px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--log-bg-color);
@@ -85,13 +85,17 @@ body {
 
 #theme-toggle,
 #menu-toggle {
-    padding: 7px 10px;
+    padding: 6px 8px;
     border: 1px solid var(--border-color);
     background: var(--log-bg-color);
     color: var(--text-color);
     cursor: pointer;
     border-radius: 4px;
     transition: background 0.2s ease, transform 0.2s ease;
+}
+
+#theme-toggle {
+    margin-left: auto;
 }
 
 #theme-toggle:hover,
@@ -113,7 +117,7 @@ body {
 #log {
     flex-grow: 1;
     background: var(--log-bg-color);
-    padding: 12px;
+    padding: 8px;
     overflow-y: auto;
     box-sizing: border-box;
     min-width: 0;
@@ -121,19 +125,19 @@ body {
 }
 
 .log-item {
-    padding: 7px 9px;
-    border-radius: 6px;
-    margin-bottom: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    margin-bottom: 3px;
     background: color-mix(in srgb, var(--log-bg-color) 88%, var(--status-bar-bg));
     border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
-    line-height: 1.35;
+    line-height: 1.25;
     word-break: break-word;
 }
 
 .empty-state {
-    margin: 12px auto;
+    margin: 8px auto;
     max-width: 420px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border-radius: 8px;
     border: 1px dashed var(--border-color);
     text-align: center;
@@ -141,11 +145,11 @@ body {
 }
 
 #user-pane {
-    width: 260px;
+    width: 240px;
     background: var(--user-pane-bg);
     border-left: 1px solid var(--border-color);
     overflow-y: auto;
-    padding: 10px;
+    padding: 8px;
     box-sizing: border-box;
     color: var(--text-color);
     flex-shrink: 0;
@@ -167,7 +171,7 @@ body {
 }
 
 .filter-section {
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 .filter-section:last-child {
@@ -179,19 +183,19 @@ body {
     top: 0;
     z-index: 1;
     background: var(--user-pane-bg);
-    padding-bottom: 8px;
-    margin-bottom: 6px;
+    padding-bottom: 6px;
+    margin-bottom: 4px;
     border-bottom: 1px solid var(--border-color);
 }
 
 .filter-section-title {
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 #selected-count,
 #selected-channel-count {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     opacity: 0.85;
     margin-top: 2px;
 }
@@ -200,16 +204,16 @@ body {
 #channel-filters label {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-    padding: 3px 2px;
+    gap: 6px;
+    margin-bottom: 4px;
+    padding: 2px 1px;
     border-radius: 4px;
 }
 
 .filter-actions {
     display: flex;
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 6px;
+    margin-bottom: 8px;
 }
 
 #select-all-channels,
@@ -218,7 +222,7 @@ body {
 #deselect-all-users {
     width: 100%;
     margin-bottom: 0;
-    padding: 6px 8px;
+    padding: 5px 7px;
     border: 1px solid var(--border-color);
     background: var(--log-bg-color);
     color: var(--text-color);
@@ -229,7 +233,7 @@ body {
 
 #pagination {
     background: var(--pagination-bg);
-    padding: 6px 10px;
+    padding: 4px 8px;
     text-align: center;
     flex-shrink: 0;
     z-index: 1;
@@ -238,14 +242,14 @@ body {
 }
 
 #pagination button {
-    margin: 4px;
-    min-width: 40px;
-    padding: 8px 10px;
+    margin: 2px;
+    min-width: 34px;
+    padding: 6px 8px;
     background-color: var(--accent-color);
     color: #fff;
     border: none;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 5px;
     transition: background 0.2s ease, transform 0.2s ease;
 }
 
@@ -259,8 +263,8 @@ body {
 }
 
 .pagination-info {
-    margin: 0 8px;
-    font-size: 0.9rem;
+    margin: 0 6px;
+    font-size: 0.82rem;
     opacity: 0.85;
 }
 
@@ -274,7 +278,7 @@ body {
 
 @media (max-width: 768px) {
     #status-bar {
-        gap: 8px;
+        gap: 6px;
     }
 
     #status {
@@ -305,7 +309,7 @@ body {
         background: var(--user-pane-bg);
         border-left: 1px solid var(--border-color);
         overflow-y: auto;
-        padding: 10px;
+        padding: 8px;
         box-shadow: var(--card-shadow);
     }
 
