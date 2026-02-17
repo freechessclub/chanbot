@@ -173,7 +173,7 @@ func main() {
 	// create a new FICS client
 	client, err := icsgo.NewClient(&icsgo.Config{
 		DisableTimeseal: true,
-	}, "freechess.org:5000", "chanbotdev", "")
+	}, "freechess.org:5000", "chanbot", "")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create a new ICS client: %v", err))
 	}
