@@ -199,8 +199,8 @@ func main() {
 	logger := &lumberjack.Logger{
 		Filename:   logFile,
 		MaxSize:    1, // megabytes
-		MaxBackups: 5,
-		MaxAge:     7,    //days
+		MaxBackups: 30,
+		MaxAge:     30,   //days
 		Compress:   true, // disabled by default
 	}
 	log.SetFlags(log.Ltime)

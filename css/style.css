@@ -9,6 +9,9 @@
     --accent-color: #3d6ef7;
     --accent-color-hover: #345fd4;
     --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    --log-meta-color: color-mix(in srgb, var(--text-color) 62%, transparent);
+    --log-channel-color: color-mix(in srgb, var(--text-color) 80%, transparent);
+    --log-message-color: color-mix(in srgb, var(--text-color) 96%, transparent);
 }
 
 body.dark {
@@ -22,6 +25,9 @@ body.dark {
     --accent-color: #5b84ff;
     --accent-color-hover: #7a9cff;
     --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    --log-meta-color: color-mix(in srgb, var(--text-color) 68%, transparent);
+    --log-channel-color: color-mix(in srgb, var(--text-color) 84%, transparent);
+    --log-message-color: color-mix(in srgb, var(--text-color) 98%, transparent);
 }
 
 body {
@@ -170,6 +176,26 @@ body {
     word-break: break-word;
 }
 
+.log-timestamp {
+    color: var(--log-meta-color);
+    opacity: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.log-channel {
+    color: var(--log-channel-color);
+    opacity: 1;
+    font-weight: 600;
+}
+
+.log-username {
+    font-weight: 700;
+}
+
+.log-message {
+    color: var(--log-message-color);
+}
+
 body.layout-dense #log {
     padding: 5px;
 }
@@ -183,6 +209,13 @@ body.layout-dense .log-item {
     line-height: 1.15;
 }
 
+body.layout-dense .log-timestamp,
+body.layout-dense .log-channel,
+body.layout-dense .log-username,
+body.layout-dense .log-message {
+    font-size: 0.96em;
+}
+
 body.layout-ultra-dense #log {
     padding: 3px;
 }
@@ -194,6 +227,18 @@ body.layout-ultra-dense .log-item {
     border-radius: 0;
     background: transparent;
     line-height: 1.05;
+}
+
+body.layout-ultra-dense .log-timestamp,
+body.layout-ultra-dense .log-channel,
+body.layout-ultra-dense .log-username,
+body.layout-ultra-dense .log-message {
+    font-size: 0.92em;
+}
+
+body.layout-ultra-dense .log-timestamp,
+body.layout-ultra-dense .log-channel {
+    letter-spacing: -0.01em;
 }
 
 .empty-state {

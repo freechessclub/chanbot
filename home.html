@@ -49,7 +49,6 @@ window.onload = function () {
     let itemsPerPage = calculateItemsPerPage();
     let currPage = 0;
     const maxPages = 5;
-    let countdownTimer = null;
     let conn = null;
     let connClosed = true;
     let autoConnectEnabled = true;
@@ -72,15 +71,39 @@ window.onload = function () {
         return palette[userColorIndices[user] % palette.length];
     }
 
-    // Helper function to extract username from a message
+    function parseLogItem(message) {
+        const match = message.match(/^(\d{2}:\d{2}:\d{2})\s+\(([^)]+)\)\s+([^:]+):\s?(.*)$/);
+        if (!match) {
+            return null;
+        }
+        return {
+            timestamp: match[1],
+            channel: match[2],
+            username: match[3],
+            text: match[4],
+        };
+    }
+
     function extractUsername(message) {
-        const match = message.match(/\(\d+\)\s+([^:]+):/);
-        return match ? match[1] : null;
+        const parsed = parseLogItem(message);
+        return parsed ? parsed.username : null;
     }
 
     function extractChannel(message) {
-        const match = message.match(/\(([^)]+)\)\s+/);
-        return match ? match[1] : null;
+        const parsed = parseLogItem(message);
+        return parsed ? parsed.channel : null;
+    }
+
+    function getAutoLinkedHtml(text) {
+        return escapeHtml(text).autoLink({
+            target: '_blank',
+            rel: 'nofollow',
+            callback: (url) => {
+                return /\.(gif|png|jpe?g)$/i.test(url)
+                    ? `<a href="${url}" target="_blank" rel="nofollow"><img width="60" src="${url}"></a>`
+                    : null;
+            },
+        });
     }
 
     function escapeHtml(text) {
@@ -187,13 +210,6 @@ window.onload = function () {
         }
     }
 
-    function stopCountdown() {
-        if (countdownTimer) {
-            clearInterval(countdownTimer);
-            countdownTimer = null;
-        }
-    }
-
     function getCurrentFilteredTotalPages() {
         const selectedUsers = getSelectedFilterValues(userFilters);
         const selectedChannels = getSelectedFilterValues(channelFilters);
@@ -207,10 +223,7 @@ window.onload = function () {
         unreadBufferedMessages = 0;
         currPage = getCurrentFilteredTotalPages();
         displayItems(currPage);
-        if (autoConnectEnabled && !connClosed) {
-            status.textContent = '';
-            startCountdown();
-        }
+        renderLiveStatus();
     }
 
     function renderBufferedStatus() {
@@ -231,23 +244,10 @@ window.onload = function () {
         status.appendChild(jumpButton);
     }
 
-    function startCountdown() {
-        stopCountdown();
-        let count = 5;
-        status.textContent = "Reloading in " + count + " seconds...";
-        countdownTimer = setInterval(() => {
-            if (connClosed) {
-                stopCountdown();
-                return;
-            }
-            count--;
-            status.textContent = "Reloading in " + count + " seconds...";
-
-            if (count <= 0) {
-                stopCountdown();
-                status.textContent = '';
-            }
-        }, 1000);
+    function renderLiveStatus() {
+        if (autoConnectEnabled && !connClosed && unreadBufferedMessages === 0) {
+            status.textContent = 'Live';
+        }
     }
 
     function connectWebSocket() {
@@ -257,6 +257,7 @@ window.onload = function () {
         }
 
         if (conn && (conn.readyState === WebSocket.OPEN || conn.readyState === WebSocket.CONNECTING)) {
+            renderLiveStatus();
             return;
         }
 
@@ -264,9 +265,13 @@ window.onload = function () {
         connClosed = false;
         conn = new WebSocket(wsProtocol + document.location.host + "/ws");
 
+        conn.onopen = function () {
+            connClosed = false;
+            renderLiveStatus();
+        };
+
         conn.onclose = function () {
             connClosed = true;
-            stopCountdown();
             status.innerHTML = autoConnectEnabled
                 ? "Connection closed."
                 : "Auto-connect is off.";
@@ -302,17 +307,14 @@ window.onload = function () {
                 currPage = nextTotalPages;
                 displayItems(currPage);
                 unreadBufferedMessages = 0;
-                startCountdown();
+                renderLiveStatus();
             } else {
                 currPage = Math.min(currPage, nextTotalPages);
                 createPaginationButtons(nextTotalPages);
                 unreadBufferedMessages += messages.length;
-                stopCountdown();
                 renderBufferedStatus();
             }
         };
-
-        startCountdown();
     }
 
     // Create checkboxes for filtering by users
@@ -450,21 +452,39 @@ window.onload = function () {
         const displayedItems = filteredItems.slice(startIndex, endIndex);
 
         displayedItems.forEach(item => {
-            const username = extractUsername(item);
-            const userColor = assignColorToUser(username);
             const div = document.createElement('div');
             div.className = 'log-item';
-            const safeItem = escapeHtml(item);
-            div.innerHTML = safeItem.autoLink({
-                target: '_blank',
-                rel: 'nofollow',
-                callback: (url) => {
-                    return /\.(gif|png|jpe?g)$/i.test(url)
-                        ? `<a href="${url}" target="_blank" rel="nofollow"><img width="60" src="${url}"></a>`
-                        : null;
-                },
-            });
-            div.style.color = userColor; // Apply user-specific color
+            const parsed = parseLogItem(item);
+
+            if (!parsed) {
+                div.innerHTML = getAutoLinkedHtml(item);
+                log.appendChild(div);
+                return;
+            }
+
+            const userColor = assignColorToUser(parsed.username);
+
+            const timestampSpan = document.createElement('span');
+            timestampSpan.className = 'log-timestamp';
+            timestampSpan.textContent = parsed.timestamp + ' ';
+
+            const channelSpan = document.createElement('span');
+            channelSpan.className = 'log-channel';
+            channelSpan.textContent = '(' + parsed.channel + ') ';
+
+            const usernameSpan = document.createElement('span');
+            usernameSpan.className = 'log-username';
+            usernameSpan.style.color = userColor;
+            usernameSpan.textContent = parsed.username + ': ';
+
+            const messageSpan = document.createElement('span');
+            messageSpan.className = 'log-message';
+            messageSpan.innerHTML = getAutoLinkedHtml(parsed.text);
+
+            div.appendChild(timestampSpan);
+            div.appendChild(channelSpan);
+            div.appendChild(usernameSpan);
+            div.appendChild(messageSpan);
             log.appendChild(div);
         });
 
@@ -474,10 +494,7 @@ window.onload = function () {
 
         if (currPage === totalPages && unreadBufferedMessages > 0) {
             unreadBufferedMessages = 0;
-            if (autoConnectEnabled && !connClosed) {
-                status.textContent = '';
-                startCountdown();
-            }
+            renderLiveStatus();
         }
     }
 
@@ -671,7 +688,6 @@ window.onload = function () {
             if (conn && (conn.readyState === WebSocket.OPEN || conn.readyState === WebSocket.CONNECTING)) {
                 conn.close();
             }
-            stopCountdown();
             status.textContent = "Auto-connect is off.";
         }
         settingsPanel.classList.add('hidden');
