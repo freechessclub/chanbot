@@ -346,6 +346,9 @@ window.onload = function () {
     function updateUserFilters() {
         const hadExistingFilters = userFilters.querySelectorAll('input').length > 0;
         const storedUsers = getStoredSelection(USER_FILTERS_STORAGE_KEY);
+        const existingUsers = new Set(
+            Array.from(userFilters.querySelectorAll('input')).map(checkbox => checkbox.value)
+        );
         const selectedUsers = new Set(
             Array.from(userFilters.querySelectorAll('input:checked')).map(checkbox => checkbox.value)
         );
@@ -358,7 +361,7 @@ window.onload = function () {
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             if (hadExistingFilters) {
-                checkbox.checked = selectedUsers.has(user);
+                checkbox.checked = selectedUsers.has(user) || !existingUsers.has(user);
             } else if (storedUsers !== null) {
                 checkbox.checked = storedUsers.has(user);
             } else {

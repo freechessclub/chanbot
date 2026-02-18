@@ -48,7 +48,7 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 
 	// Poll for messages with this period.
-	msgPeriod = 5 * time.Second
+	msgPeriod = 8 * time.Second
 )
 
 var (
@@ -100,31 +100,43 @@ func writer(ws *websocket.Conn, lastMod time.Time, seek int) {
 		ws.Close()
 	}()
 
+	sendUpdates := func() error {
+		var p []byte
+		var err error
+
+		p, lastMod, err = readFileIfModified(lastMod, logFile)
+		if err != nil {
+			if s := err.Error(); s != lastError {
+				lastError = s
+				p = []byte(lastError)
+			}
+		} else {
+			lastError = ""
+		}
+
+		if p != nil {
+			size := len(p)
+			if size > seek {
+				ws.SetWriteDeadline(time.Now().Add(writeWait))
+				if err := ws.WriteMessage(websocket.TextMessage, p[seek:]); err != nil {
+					return err
+				}
+				seek = size
+			}
+		}
+
+		return nil
+	}
+
+	if err := sendUpdates(); err != nil {
+		return
+	}
+
 	for {
 		select {
 		case <-msgticker.C:
-			var p []byte
-			var err error
-
-			p, lastMod, err = readFileIfModified(lastMod, logFile)
-			if err != nil {
-				if s := err.Error(); s != lastError {
-					lastError = s
-					p = []byte(lastError)
-				}
-			} else {
-				lastError = ""
-			}
-
-			if p != nil {
-				size := len(p)
-				if size > seek {
-					ws.SetWriteDeadline(time.Now().Add(writeWait))
-					if err := ws.WriteMessage(websocket.TextMessage, p[seek:]); err != nil {
-						return
-					}
-					seek = size
-				}
+			if err := sendUpdates(); err != nil {
+				return
 			}
 		case <-pingticker.C:
 			ws.SetWriteDeadline(time.Now().Add(writeWait))

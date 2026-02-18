@@ -188,7 +188,8 @@ body {
 }
 
 .log-time {
-    opacity: 0.92;
+    font-size: 0.86em;
+    opacity: 0.7;
 }
 
 .log-channel {
@@ -230,6 +231,11 @@ body.layout-dense .log-date {
     opacity: 0.66;
 }
 
+body.layout-dense .log-time {
+    font-size: 0.82em;
+    opacity: 0.66;
+}
+
 body.layout-ultra-dense #log {
     padding: 3px;
 }
@@ -251,6 +257,11 @@ body.layout-ultra-dense .log-message {
 }
 
 body.layout-ultra-dense .log-date {
+    font-size: 0.78em;
+    opacity: 0.62;
+}
+
+body.layout-ultra-dense .log-time {
     font-size: 0.78em;
     opacity: 0.62;
 }
