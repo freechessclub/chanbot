@@ -182,6 +182,15 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
+.log-date {
+    font-size: 0.86em;
+    opacity: 0.7;
+}
+
+.log-time {
+    opacity: 0.92;
+}
+
 .log-channel {
     color: var(--log-channel-color);
     opacity: 1;
@@ -216,6 +225,11 @@ body.layout-dense .log-message {
     font-size: 0.96em;
 }
 
+body.layout-dense .log-date {
+    font-size: 0.82em;
+    opacity: 0.66;
+}
+
 body.layout-ultra-dense #log {
     padding: 3px;
 }
@@ -234,6 +248,11 @@ body.layout-ultra-dense .log-channel,
 body.layout-ultra-dense .log-username,
 body.layout-ultra-dense .log-message {
     font-size: 0.92em;
+}
+
+body.layout-ultra-dense .log-date {
+    font-size: 0.78em;
+    opacity: 0.62;
 }
 
 body.layout-ultra-dense .log-timestamp,

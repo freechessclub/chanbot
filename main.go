@@ -203,7 +203,7 @@ func main() {
 		MaxAge:     30,   //days
 		Compress:   true, // disabled by default
 	}
-	log.SetFlags(log.Ltime)
+	log.SetFlags(log.Ldate | log.Ltime)
 	log.SetOutput(logger)
 
 	// handle interrupts

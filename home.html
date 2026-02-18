@@ -72,7 +72,7 @@ window.onload = function () {
     }
 
     function parseLogItem(message) {
-        const match = message.match(/^(\d{2}:\d{2}:\d{2})\s+\(([^)]+)\)\s+([^:]+):\s?(.*)$/);
+        const match = message.match(/^((?:\d{4}\/\d{2}\/\d{2}\s+)?\d{2}:\d{2}:\d{2})\s+\(([^)]+)\)\s+([^:]+):\s?(.*)$/);
         if (!match) {
             return null;
         }
@@ -81,6 +81,31 @@ window.onload = function () {
             channel: match[2],
             username: match[3],
             text: match[4],
+        };
+    }
+
+    function formatTimestampDisplay(rawTimestamp) {
+        const fullMatch = rawTimestamp.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}:\d{2}:\d{2})$/);
+        if (!fullMatch) {
+            return {
+                date: '',
+                time: rawTimestamp,
+            };
+        }
+
+        const year = Number(fullMatch[1]);
+        const month = Number(fullMatch[2]);
+        const day = Number(fullMatch[3]);
+        const time = fullMatch[4];
+        const dateObj = new Date(year, month - 1, day);
+        const date = dateObj.toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+        });
+
+        return {
+            date,
+            time,
         };
     }
 
@@ -463,10 +488,21 @@ window.onload = function () {
             }
 
             const userColor = assignColorToUser(parsed.username);
+            const timestampDisplay = formatTimestampDisplay(parsed.timestamp);
 
             const timestampSpan = document.createElement('span');
             timestampSpan.className = 'log-timestamp';
-            timestampSpan.textContent = parsed.timestamp + ' ';
+            if (timestampDisplay.date) {
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'log-date';
+                dateSpan.textContent = timestampDisplay.date + ' ';
+                timestampSpan.appendChild(dateSpan);
+            }
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'log-time';
+            timeSpan.textContent = timestampDisplay.time + ' ';
+            timestampSpan.appendChild(timeSpan);
 
             const channelSpan = document.createElement('span');
             channelSpan.className = 'log-channel';
