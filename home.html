@@ -53,6 +53,12 @@ window.onload = function () {
     let conn = null;
     let connClosed = true;
     let autoConnectEnabled = true;
+    let unreadBufferedMessages = 0;
+
+    function isLogNearBottom() {
+        const distanceFromBottom = log.scrollHeight - (log.scrollTop + log.clientHeight);
+        return distanceFromBottom <= 2;
+    }
 
     function getUserColorPalette() {
         return document.body.classList.contains('dark') ? darkModeColors : lightModeColors;
@@ -188,6 +194,43 @@ window.onload = function () {
         }
     }
 
+    function getCurrentFilteredTotalPages() {
+        const selectedUsers = getSelectedFilterValues(userFilters);
+        const selectedChannels = getSelectedFilterValues(channelFilters);
+        const searchText = searchInput.value.trim().toLowerCase();
+        const filteredItems = getFilteredItems(selectedUsers, selectedChannels)
+            .filter(item => item.toLowerCase().includes(searchText));
+        return getTotalPages(filteredItems.length);
+    }
+
+    function jumpToLive() {
+        unreadBufferedMessages = 0;
+        currPage = getCurrentFilteredTotalPages();
+        displayItems(currPage);
+        if (autoConnectEnabled && !connClosed) {
+            status.textContent = '';
+            startCountdown();
+        }
+    }
+
+    function renderBufferedStatus() {
+        status.innerHTML = '';
+
+        const message = document.createElement('span');
+        message.textContent = unreadBufferedMessages + ' new • ';
+
+        const jumpButton = document.createElement('button');
+        jumpButton.type = 'button';
+        jumpButton.textContent = 'jump to live';
+        jumpButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            jumpToLive();
+        });
+
+        status.appendChild(message);
+        status.appendChild(jumpButton);
+    }
+
     function startCountdown() {
         stopCountdown();
         let count = 5;
@@ -239,6 +282,7 @@ window.onload = function () {
             const selectedUsersBefore = getSelectedFilterValues(userFilters);
             const selectedChannelsBefore = getSelectedFilterValues(channelFilters);
             const prevTotalPages = getTotalPages(getFilteredItems(selectedUsersBefore, selectedChannelsBefore).length);
+            const wasViewingLatestContext = !currPage || (currPage === prevTotalPages && isLogNearBottom());
 
             items = items.concat(messages);
             messages.forEach(message => {
@@ -254,14 +298,18 @@ window.onload = function () {
             const selectedChannelsAfter = getSelectedFilterValues(channelFilters);
             const nextTotalPages = getTotalPages(getFilteredItems(selectedUsersAfter, selectedChannelsAfter).length);
 
-            if (!currPage || currPage === prevTotalPages) {
+            if (wasViewingLatestContext) {
                 currPage = nextTotalPages;
+                displayItems(currPage);
+                unreadBufferedMessages = 0;
+                startCountdown();
             } else {
                 currPage = Math.min(currPage, nextTotalPages);
+                createPaginationButtons(nextTotalPages);
+                unreadBufferedMessages += messages.length;
+                stopCountdown();
+                renderBufferedStatus();
             }
-
-            displayItems(currPage);
-            startCountdown();
         };
 
         startCountdown();
@@ -353,6 +401,7 @@ window.onload = function () {
         if (currPage != pageNumber) {
             return;
         }
+        const wasNearBottom = isLogNearBottom();
         log.innerHTML = '';
 
         const selectedUsers = getSelectedFilterValues(userFilters);
@@ -416,12 +465,20 @@ window.onload = function () {
                 },
             });
             div.style.color = userColor; // Apply user-specific color
-            var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
             log.appendChild(div);
-            if (doScroll) {
-                log.scrollTop = log.scrollHeight - log.clientHeight;
-            }
         });
+
+        if (wasNearBottom) {
+            log.scrollTop = log.scrollHeight - log.clientHeight;
+        }
+
+        if (currPage === totalPages && unreadBufferedMessages > 0) {
+            unreadBufferedMessages = 0;
+            if (autoConnectEnabled && !connClosed) {
+                status.textContent = '';
+                startCountdown();
+            }
+        }
     }
 
     function calculateItemsPerPage() {
