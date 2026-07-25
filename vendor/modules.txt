@@ -1,4 +1,4 @@
-# github.com/freechessclub/icsgo v0.0.0-20220125052923-fceb78b03869
+# github.com/freechessclub/icsgo v0.0.0-20260725171709-9834e5a2a9d5
 ## explicit; go 1.12
 github.com/freechessclub/icsgo
 # github.com/gorilla/websocket v1.5.1

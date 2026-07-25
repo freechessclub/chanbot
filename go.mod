@@ -3,7 +3,7 @@ module github.com/freechessclub/chanbot
 go 1.20
 
 require (
-	github.com/freechessclub/icsgo v0.0.0-20220125052923-fceb78b03869
+	github.com/freechessclub/icsgo v0.0.0-20260725171709-9834e5a2a9d5
 	github.com/gorilla/websocket v1.5.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
